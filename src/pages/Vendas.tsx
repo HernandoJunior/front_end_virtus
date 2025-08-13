@@ -222,6 +222,8 @@ export default function Vendas() {
             Registre e gerencie todas as vendas realizadas
           </p>
         </div>
+
+        {/* IMPORTACAO CARD */}
         <div className="flex items-center gap-2">
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
             <DialogTrigger asChild>
@@ -245,8 +247,9 @@ export default function Vendas() {
                       <SelectValue placeholder="Selecione o tipo da planilha" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pdf">PDF</SelectItem>
-                      <SelectItem value="excel">Excel</SelectItem>
+                      <SelectItem value="govba">Gov Ba</SelectItem>
+                      <SelectItem value="govsp">Gov SP</SelectItem>
+                      <SelectItem value="prefsp">Prefeitura SP</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -265,7 +268,7 @@ export default function Vendas() {
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button className="flex-1" onClick={downloadPDF}>
-                    Exportar
+                    Importar
                   </Button>
                   <Button variant="outline" onClick={() => setIsImportOpen(false)}>
                     Cancelar
@@ -274,7 +277,6 @@ export default function Vendas() {
               </div>
             </DialogContent>
           </Dialog>
-
 
           {/* EXPORTACAO CARD */}
           <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>

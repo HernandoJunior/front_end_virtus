@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+
+// IMPORTACAO DE UI
 import { 
   Search, 
   Plus, 
@@ -32,6 +34,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/services/api";
+
+// BIBLIOTECAS PARA EXPORTACAO E IMPORTACAO (PDF E EXCEL) 
+import { jsPDF } from "jspdf";
+import { autoTable } from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
 
 // Mock data
 const mockClientes = [
@@ -74,7 +83,13 @@ const mockClientes = [
 ];
 
 export default function Clientes() {
+  const [exportType, setExportType] = useState(""); // pdf ou excel
+  const [quantity, setQuantity] = useState(""); // 50, 100, todos
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("todos");
   const [colaborators, setColaborators] = useState([]);
@@ -90,6 +105,33 @@ export default function Clientes() {
   });
   const [listclient, setListclient] = useState([]);
   const navigate = useNavigate();
+
+  // Exporta PDF
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    autoTable(doc, {
+      head: [["ID", "Nome", "Email"]],
+      body: listclient.map(c => [c.ID_CLIENTE, c.nome, c.email]),
+    });
+    doc.save("clientes.pdf");
+  };
+
+  // Exporta Excel
+  const downloadExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(listclient);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes");
+    XLSX.writeFile(workbook, "clientes.xlsx");
+  };
+
+  // Função geral
+  const handleExport = () => {
+    if (exportType === "pdf") {
+      downloadPDF();
+    } else if (exportType === "excel") {
+      downloadExcel();
+    }
+  };
 
   useEffect(() => {
     // Função para buscar os clientes
@@ -115,7 +157,7 @@ export default function Clientes() {
       fetchclient();
     }, []);
 
-    async function createClient() {
+  async function createClient() {
       try {
         const response = api.post("/clientes/create", client)
         console.log(client)
@@ -126,9 +168,9 @@ export default function Clientes() {
         console.log(client)
         console.log(error)
       }
-    }
+  }
 
-const handleChange = (e) => {
+  const handleChange = (e) => {
   const { id, value } = e.target;
 
   let finalValue = value;
@@ -142,7 +184,7 @@ const handleChange = (e) => {
     ...prevState, // Copia todos os valores antigos do estado
     [id]: value   // Atualiza apenas o campo que mudou
   }));
-};
+  };
   
 
   const filteredClientes = mockClientes.filter(cliente => {
@@ -167,14 +209,115 @@ const handleChange = (e) => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            Importar
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
+          
+          {/* CARD DE IMPORTACAO */}
+          <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" onClick={() => setIsImportOpen}>
+                <Upload className="h-4 w-4 mr-2" />
+                  Importar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Importacao para o sistema</DialogTitle>
+                <DialogDescription>
+                  Importacao de vendas no sistema
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="tipo">Tipo</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo da planilha" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="govsp">Gov SP</SelectItem>
+                      <SelectItem value="govba">Gov BA</SelectItem>
+                      <SelectItem value="prefsp">Prefeitura SP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="quantidade">Quantidade</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a quantidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button className="flex-1" onClick={downloadPDF}>
+                    Importar
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsImportOpen(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          {/* CARD DE EXPORTACAO */}
+          <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" onClick={() => setIsExportOpen}>
+                <Upload className="h-4 w-4 mr-2" />
+                  Exportar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Exportacao do sistema</DialogTitle>
+                <DialogDescription>
+                  Extrair vendas do sistema
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="tipo">Tipo</Label>
+                  <Select onValueChange={setExportType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo da planilha" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                      <SelectItem value="excel">Excel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="quantidade">Quantidade</Label>
+                  <Select onValueChange={setQuantity}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a quantidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pdf">50</SelectItem>
+                      <SelectItem value="excel">100</SelectItem>
+                      <SelectItem value="todos">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button className="flex-1" onClick={handleExport}>
+                    Exportar
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsExportOpen(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>   
+
+          {/* CARD DE NOVO CLIENTE */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
