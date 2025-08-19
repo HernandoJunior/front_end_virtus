@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { api } from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 // Tipagem para o usuário — adicione mais campos conforme o retorno da sua API
 interface User {
@@ -32,6 +33,7 @@ interface AuthProviderProps {
 }
 
 function AuthProvider({ children }: AuthProviderProps) {
+  const navigate = useNavigate();
   const [data, setData] = useState<{ user: User | null; token?: string }>({ user: null });
     async function signIn({ email, senha }) {
     try {
@@ -64,6 +66,8 @@ function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem("@virtus:token");
     localStorage.removeItem("@virtus:user");
     setData({ user: null });
+    navigate("/")
+    
   }
 
   useEffect(() => {

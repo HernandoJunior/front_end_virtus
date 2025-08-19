@@ -30,18 +30,16 @@ export default function Auth() {
   const handleLogin = (event) => {
     event.preventDefault();
     signIn({ email , senha })
-
-    console.log("Login:", email, senha);
+    navigate("/dashboard")
   };
 
-  const handleRegister = () => {
+  async function handleRegister () {
     if(!registerForm.cpf || !registerForm.email || !registerForm.nome || !registerForm.role || !registerForm.senha){
       return alert("Preencha todos os campos")
     }
-    api.post("/administrador/create", registerForm)
+    const response = await api.post("/administrador/create", registerForm)
     .then(() => {
       alert("Usuario cadastrado com sucesso!");
-      navigate("/");
     })
     .catch(error => {
       if(error.response){

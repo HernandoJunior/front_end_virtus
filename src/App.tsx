@@ -18,6 +18,8 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import  { Routes }  from './Routes'
 import { AuthProvider } from './hooks/auth'
+import { BrowserRouter } from "react-router-dom";
+
 
 
 const queryClient = new QueryClient();
@@ -27,9 +29,9 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <Routes /> 
-      </AuthProvider>
+        <AuthProvider>
+          <Routes /> 
+        </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -13,6 +13,7 @@ import  Propostas  from '../pages/Propostas';
 import  Relatorios  from '../pages/Relatorios';
 import  Usuarios  from '../pages/Usuarios';
 import  Vendas  from '../pages/Vendas';
+import  Login  from '../pages/Login';
 import ClienteDetalhes from "../pages/ClientesDetalhes";
 import ClientePropostas from "../pages/ClientesPropostas";
 import SupervisorCarteira from "../pages/SupervisorCarteira";
@@ -21,7 +22,8 @@ export function AppRoutes(){
   return (
     <Routes>
       {/* Menu principal */}
-      <Route path="/" element={<CrmLayout><Dashboard /></CrmLayout>} />
+      <Route path="/" element={<Login />} />
+      <Route path="/dashboard" element={<CrmLayout><Dashboard /></CrmLayout>} />
       <Route path="/bancos" element={<CrmLayout><Bancos /></CrmLayout>} />
       <Route path="/carteiras" element={<CrmLayout><Carteiras /></CrmLayout>} />
       <Route path="/clientes" element={<CrmLayout><Clientes /></CrmLayout>} />
