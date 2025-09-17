@@ -204,7 +204,7 @@ export default function ClienteDetalhes() {
                 const response = await api.get(`/clientes/consulta/${clienteId}`);
                 setCliente(response.data);
                 setFormData(response.data); // Preenche o formulário com os dados iniciais
-                console.log(cliente)
+                console.log(response.data)
             } catch (error) {
                 console.error("Erro ao buscar dados do cliente:", error);
                 setCliente(null); // Define como nulo se não encontrar, para mostrar a mensagem de erro
@@ -358,7 +358,7 @@ export default function ClienteDetalhes() {
                                 {renderField("Margem Disponível", "margem_disponivel", cliente.margem_disponivel)}
                                 {renderField("Margem Total", "margem_total", cliente.margem_total)}
                                 {renderField("Margem", "margem", cliente.margem)}
-                                {renderField("Valor Liberado", "valor_liberado", cliente.valor_liberado)}
+                                {renderField("Valor Liberado", "valor_liberado", cliente.valorliberado)}
                             </div>
                         </div>
 

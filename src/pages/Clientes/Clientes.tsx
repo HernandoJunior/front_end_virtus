@@ -10,7 +10,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { 
-  Search, Plus, Filter, Edit, Upload, Loader2 
+  Search, Plus, Filter, Edit, Upload, Loader2, 
+  Trash2
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
@@ -19,9 +20,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/services/api";
+
+// BIBLIOTECAS PARA EXPORTACAO E IMPORTACAO (PDF E EXCEL)
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { autoTable } from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function Clientes() {
   // Estados para modais e dialogs
@@ -29,6 +33,18 @@ export default function Clientes() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [client, setClient] = useState({
+    nome: "",
+    email: "",
+    cpf: "",
+    telefone: "",
+    margem: "",
+    idade: "",
+    obito: "",
+    ID_COLABORADOR: "",
+    status: null
+  });
+  const [exportType, setExportType] = useState(""); // pdf ou excel
 
   // Estados dos dados e da UI
   const [listclient, setListclient] = useState([]);
@@ -41,34 +57,65 @@ export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [sortBy, setSortBy] = useState("default");
-  const [displayLimit, setDisplayLimit] = useState(50);
-  
-  // Funções de busca de dados (sem alterações)
-  useEffect(() => {
-    async function fetchclient() {
-        try {
-          const response = await api.get("/clientes/consulta");
-          setListclient(response.data || []); 
-        } catch (error) {
-          console.error("Erro ao buscar clientes:", error);
-          setListclient([]);
-        }
-      }
-    async function fetchColaborators() {
-        try {
-          const response = await api.get("/colaborador/listarcol");
-          setColaborators(response.data || []);
-        } catch (error) {
-          console.error("Erro ao buscar colaboradores:", error);
-        }
-      }
-  
-      fetchColaborators();
-      fetchclient();
-  }, []);
+  const [displayLimit, setDisplayLimit] = useState(20);
 
-  const handleFileChange = (event) => {
-    setSelectedFile(event.target.files[0]);
+  //FUNCOES DE IMPORTACAO E EXPORTACAO
+  const handleChange = (e) => {
+
+ const { id, value } = e.target;
+
+
+
+ let finalValue = value;
+
+ if (id === 'idade') {
+
+  finalValue = value === '' ? '' : parseInt(value, 10);
+
+ } else if (id === 'margem') {
+
+  finalValue = value === '' ? '' : parseFloat(value);
+
+ }
+
+
+
+ setClient(prevState => ({
+
+  ...prevState, // Copia todos os valores antigos do estado
+
+  [id]: value  // Atualiza apenas o campo que mudou
+
+ }));
+
+ };
+
+  // Exporta PDF
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    autoTable(doc, {
+    head: [["ID", "Nome", "Email", "Idade", "Telefone", "Status"]],
+    body: listclient.map(c => [c.ID_CLIENTE, c.nome, c.email, c.idade, c.telefone, c.status ? "Ativo" : "Inativo"]),
+    });
+
+    doc.save("clientes.pdf");
+  };
+
+  // Exporta Excel
+  const downloadExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(listclient);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes");
+    XLSX.writeFile(workbook, "clientes.xlsx");
+  };
+
+  // Função geral
+  const handleExport = () => {
+    if (exportType === "pdf") {
+    downloadPDF();
+    } else if (exportType === "excel") {
+    downloadExcel();
+    }
   };
 
   async function handleUpload() {
@@ -84,8 +131,7 @@ export default function Clientes() {
       const response = await api.post("/clientes/upload", formData, {});
       alert("Arquivo enviado com sucesso!");
       setIsImportOpen(false);
-      // Opcional: recarregar a lista de clientes após o upload
-      // fetchclient(); 
+      fetchclient(); 
     } catch (error) {
       alert("Erro ao importar arquivo!");
       console.error("Detalhes do erro:", error);
@@ -93,6 +139,48 @@ export default function Clientes() {
       setIsLoading(false)
     }
   }
+
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  async function createClient() {
+    try {
+      const response = api.post("/clientes/create", client)
+      console.log(client)
+      alert("Cliente cadastrado com sucesso")
+      navigate("/clientes")
+    } catch (error) {
+    alert("Erro ao cadastrar cliente")
+      console.log(client)
+      console.log(error)
+      }
+  }
+
+  async function fetchclient() {
+    try {
+      const response = await api.get("/clientes/consulta");
+      setListclient(response.data || []); 
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error);
+      setListclient([]);
+    }
+  }
+async function fetchColaborators() {
+    try {
+      const response = await api.get("/colaborador/listarcol");
+      setColaborators(response.data || []);
+    } catch (error) {
+      console.error("Erro ao buscar colaboradores:", error);
+    }
+  }
+
+    // Funções de busca de dados (sem alterações)
+  useEffect(() => {
+      fetchColaborators();
+      fetchclient();
+    }, []);
+
 
   const clientsToDisplay = useMemo(() => {
     let processedClients = [...listclient];
@@ -121,7 +209,7 @@ export default function Clientes() {
       });
     }
 
-    if (displayLimit !== 'all') {
+    if (displayLimit !== 1) {
       return processedClients.slice(0, Number(displayLimit));
     }
 
@@ -132,9 +220,24 @@ export default function Clientes() {
     setSearchTerm("");
     setStatusFilter("todos");
     setSortBy("default");
-    setDisplayLimit(50);
+    Number(setDisplayLimit(20));
     setIsFilterOpen(false);
   };
+
+  const deleteClient = async (client) => {
+    if(!client){
+      alert("Cliente nao identificado")
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/clientes/deleteClient/${client.ID_CLIENTE}`)
+      alert("Cliente deletado com sucesso!")
+    } catch (error) {
+      alert("Nao pode ser deletado cliente com vendas registradas!")
+      console.log(error)
+    }
+  }
 
 
   return (
@@ -147,40 +250,143 @@ export default function Clientes() {
             Gerencie todos os clientes da Virtus Consultoria
           </p>
         </div>
+        
         <div className="flex items-center gap-2">
-            {/* Botão de Importar */}
-            <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Upload className="h-4 w-4 mr-2" /> Importar
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Importação para o sistema</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Input type="file" onChange={handleFileChange}/>
-                  <div className="flex gap-2 pt-4">
-                  <Button onClick={handleUpload} disabled={isLoading || !selectedFile}>
-                      {isLoading ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
-                      ) : ( 'Enviar Arquivo' )}
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsImportOpen(false)} disabled={isLoading}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
 
-            {/* Botão de Novo Cliente */}
-            <Button onClick={() => navigate('/clientes/novo')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Cliente
+        {/* Botão de Importar */}
+        <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Upload className="h-4 w-4 mr-2" /> Importar
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Importação para o sistema</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input type="file" onChange={handleFileChange}/>
+                <div className="flex gap-2 pt-4">
+                <Button onClick={handleUpload} disabled={isLoading || !selectedFile}>
+                    {isLoading ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
+                    ) : ( 'Enviar Arquivo' )}
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsImportOpen(false)} disabled={isLoading}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+        </Dialog>
+
+        {/* CARD DE EXPORTACAO */}
+        <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+          <DialogTrigger asChild>
+          <Button variant="outline" size="sm" onClick={() => setIsExportOpen}>
+          <Upload className="h-4 w-4 mr-2" />
+        Exportar
+        </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Exportacao do sistema</DialogTitle>
+          <DialogDescription>
+          Extrair vendas do sistema
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+          <Label htmlFor="tipo">Tipo</Label>
+          <Select onValueChange={setExportType}>
+            <SelectTrigger>
+            <SelectValue placeholder="Selecione o tipo da planilha" />
+            </SelectTrigger>
+            <SelectContent>
+            <SelectItem value="pdf">PDF</SelectItem>
+            <SelectItem value="excel">Excel</SelectItem>
+            </SelectContent>
+          </Select>
+          </div>
+            <div className="flex gap-2 pt-4">
+            <Button className="flex-1" onClick={handleExport}>
+              Exportar
             </Button>
-        </div>
+            <Button variant="outline" onClick={() => setIsExportOpen(false)}>
+              Cancelar
+              </Button>
+            </div>
+          </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* CARD DE NOVO CLIENTE */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Cliente
+              </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Registrar Novo Cliente</DialogTitle>
+                <DialogDescription>
+                Registre um novo cliente no sistema
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                <Label htmlFor="nome">Nome</Label>
+                <Input id="nome" type="text" placeholder="Joao da silva" onChange={handleChange}/>
+                </div>
+                <div>
+                <Label htmlFor="cpf">CPF</Label>
+                <Input id="cpf" type="number" placeholder="34589182" onChange={handleChange}/>
+                </div>
+                <div>
+                <Label htmlFor="telefone">Telefone</Label>
+                <Input id="telefone" type="number" placeholder="71997415555" onChange={handleChange}/>
+                </div>
+                <div>
+                <Label htmlFor="margem">Margem</Label>
+                <Input id="margem" type="number" placeholder="45000" onChange={handleChange}/>
+                </div>
+                <div>
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="cliente@email.com" onChange={handleChange}/>
+                </div>
+                <div>
+                <Label htmlFor="idade">Idade</Label>
+                <Input id="idade" type="number" placeholder="40" onChange={handleChange}/>
+                </div>
+                <div>
+                <Label htmlFor="Colaborador">Colaborador</Label>
+                <Select onValueChange={(value) => setClient(prevState => ({...prevState, ID_COLABORADOR: value}))}>
+                  <SelectTrigger>
+                  <SelectValue placeholder="Selecione o colaborador" />
+                  </SelectTrigger>
+                  <SelectContent >
+                  {colaborators.map(colaborador => (
+                    <SelectItem key={colaborador.ID_COLABORADOR} value={colaborador.ID_COLABORADOR}>
+                    {colaborador.ID_COLABORADOR} - {colaborador.nome}
+                    </SelectItem>
+                  ))}
+                  </SelectContent>
+                </Select>
+                </div>
+                <div className="flex gap-2 pt-4">
+                <Button onClick={() => createClient()} className="flex-1">
+                  Registrar Cliente
+                </Button>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                </div>
+              </div>
+              </DialogContent>
+        </Dialog>
+    </div>
       </div>
 
       {/* Filters */}
@@ -235,13 +441,16 @@ export default function Clientes() {
                     <Label>Exibir por página</Label>
                     <Select
                       value={String(displayLimit)}
-                      onValueChange={(val) => setDisplayLimit(val === 'all' ? 'all' : Number(val))}
+                      onValueChange={(val) => setDisplayLimit(Number(val))}
                     >
-                      <SelectTrigger><SelectValue/></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue/>
+                      </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="20">20 clientes</SelectItem>
                         <SelectItem value="50">50 clientes</SelectItem>
                         <SelectItem value="100">100 clientes</SelectItem>
-                        <SelectItem value="all">Todos os clientes</SelectItem>
+                        <SelectItem value="1">Todos os clientes</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -297,6 +506,9 @@ export default function Clientes() {
                         <Edit className="h-4 w-4" />
                       </Link>
                     </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteClient(cliente)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                   </TableCell>
                 </TableRow>
               ))}

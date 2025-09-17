@@ -37,7 +37,11 @@ function AuthProvider({ children }: AuthProviderProps) {
   const [data, setData] = useState<{ user: User | null; token?: string }>({ user: null });
     async function signIn({ email, senha }) {
     try {
-      const response = await api.post("/administrador/auth", { email, senha });
+      const response = await api.post("/auth/login", { email, senha });
+
+      if(response){
+        alert("Login efetuado com sucesso!")
+      }
 
       // CORREÇÃO: Capturar o 'user' e o 'token' da resposta.
       const { user, token } = response.data;
@@ -52,10 +56,11 @@ function AuthProvider({ children }: AuthProviderProps) {
       // Atualizar o estado com ambos os dados para acionar a renderização.
       setData({ user, token });
 
+      navigate("/dashboard")
+
     } catch (error) {
       if (error.response) {
-        // Use a mensagem de erro do backend, se disponível.
-        alert(error.response.data.message || error.response.data.error);
+        alert("Informacoes incorretas, tente novamente!")
       } else {
         alert("Não foi possível entrar.");
       }

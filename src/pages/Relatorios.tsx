@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { api } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { 
@@ -30,328 +32,194 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+
+interface RelatorioCompleto {
+  kpis: {
+    totalVendas: number;
+    qtdVendas: number;
+    metaAtingidaPercentual: number;
+    ticketMedio: number;
+  };
+  vendasPorPeriodo: {
+    periodo: string;
+    qtdVendas: number;
+    valorTotal: number;
+    valorMeta: number;
+    atingimentoPercentual: number;
+  }[];
+  comissoes: {
+    responsavelNome: string;
+    qtdVendas: number;
+    totalComissionado: number;
+  }[];
+  vendasPorBanco: {
+    banco: string;
+    qtdVendas: number;
+    valorTotal: number;
+    percentual: number;
+  }[];
+  funil: {
+    propostasCriadas: number;
+    propostasEmAnalise: number;
+    propostasAprovadas: number;
+    propostasRecusadas: number;
+    taxaDeConversao: number;
+  };
+}
 
 export default function Relatorios() {
-  const [tipoRelatorio, setTipoRelatorio] = useState("vendas");
+  const [relatorioData, setRelatorioData] = useState<RelatorioCompleto | null>(null);
+  
+  // Estados para os filtros
+  const [periodo, setPeriodo] = useState('ultimos-30-dias');
+  // ... outros estados para filtros
 
-  const dadosVendas = [
-    { periodo: "Janeiro 2024", vendas: 15, valor: 847200, meta: 850000, atingimento: 99.7 },
-    { periodo: "Dezembro 2023", vendas: 12, valor: 723400, meta: 750000, atingimento: 96.5 },
-    { periodo: "Novembro 2023", vendas: 18, valor: 892100, meta: 800000, atingimento: 111.5 },
-  ];
+  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-  const dadosComissoes = [
-    { colaborador: "Maria Santos", vendas: 8, valorVendas: 420000, comissao: 21000, supervisor: "Carlos Lima" },
-    { colaborador: "João Silva", vendas: 5, valorVendas: 287500, comissao: 14375, supervisor: "Ana Rodriguez" },
-    { colaborador: "Pedro Costa", vendas: 2, valorVendas: 139700, comissao: 6985, supervisor: "Carlos Lima" },
-  ];
+  useEffect(() => {
+    async function fetchRelatorio() {
+      const dataFinal = new Date();
+      const dataInicial = new Date();
+      // Lógica para ajustar dataInicial com base na seleção do 'periodo'
+      switch (periodo) {
+        case 'este-mes':
+            dataInicial.setDate(1);
+            break;
+        case 'mes-passado':
+            dataInicial.setMonth(dataInicial.getMonth() - 1);
+            dataInicial.setDate(1);
+            dataFinal.setDate(0); // Último dia do mês anterior
+            break;
+        case 'ultimos-3-meses':
+            dataInicial.setMonth(dataInicial.getMonth() - 3);
+            break;
+        case 'ultimos-30-dias':
+        default:
+            dataInicial.setDate(dataFinal.getDate() - 30);
+            break;
+      }
+      
+      const params = new URLSearchParams({
+        dataInicial: dataInicial.toISOString().split('T')[0],
+        dataFinal: dataFinal.toISOString().split('T')[0],
+        // Adicione outros filtros aqui, se não forem 'todos'
+      });
 
-  const dadosBancos = [
-    { banco: "Banco do Brasil", vendas: 8, valor: 345200, percentual: 40.7 },
-    { banco: "Caixa Econômica", vendas: 5, valor: 287500, percentual: 33.9 },
-    { banco: "Bradesco", vendas: 2, valor: 214500, percentual: 25.4 },
-  ];
+      try {
+        const response = await api.get(`/relatorios/vendas?${params.toString()}`);
+        setRelatorioData(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar relatório:", error);
+      }
+    }
+    fetchRelatorio();
+  }, [periodo]); // Recarrega quando um filtro mudar
 
-  const exportarRelatorio = () => {
-    // Simulação de exportação CSV
-    console.log("Exportando relatório em CSV...");
-  };
+  if (!relatorioData) {
+    return <div>Carregando relatório...</div>;
+  }
+
+  const { kpis, vendasPorPeriodo, comissoes, vendasPorBanco, funil } = relatorioData;
+  const totalFunil = funil.propostasCriadas > 0 ? funil.propostasCriadas : 1;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Relatórios</h1>
-          <p className="text-muted-foreground">
-            Análise detalhada de vendas, comissões e performance
-          </p>
+          <p className="text-muted-foreground">Análise detalhada de vendas, comissões e performance</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={exportarRelatorio}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-        </div>
+        <Button variant="outline"><Download className="h-4 w-4 mr-2" /> Exportar CSV</Button>
       </div>
 
-      {/* Filtros Globais */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <Label>Período</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Últimos 30 dias" />
-                </SelectTrigger>
+      <Card>
+        <CardHeader><CardTitle>Filtros</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Select value={periodo} onValueChange={setPeriodo}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="7dias">Últimos 7 dias</SelectItem>
-                  <SelectItem value="30dias">Últimos 30 dias</SelectItem>
-                  <SelectItem value="3meses">Últimos 3 meses</SelectItem>
-                  <SelectItem value="6meses">Últimos 6 meses</SelectItem>
-                  <SelectItem value="ano">Último ano</SelectItem>
+                    <SelectItem value="ultimos-30-dias">Últimos 30 dias</SelectItem>
+                    <SelectItem value="este-mes">Este mês</SelectItem>
+                    <SelectItem value="mes-passado">Mês passado</SelectItem>
+                    <SelectItem value="ultimos-3-meses">Últimos 3 meses</SelectItem>
                 </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Colaborador</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="maria">Maria Santos</SelectItem>
-                  <SelectItem value="joao">João Silva</SelectItem>
-                  <SelectItem value="pedro">Pedro Costa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Supervisor</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="carlos">Carlos Lima</SelectItem>
-                  <SelectItem value="ana">Ana Rodriguez</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Banco</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="bb">Banco do Brasil</SelectItem>
-                  <SelectItem value="caixa">Caixa Econômica</SelectItem>
-                  <SelectItem value="bradesco">Bradesco</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            </Select>
+            <Select><SelectTrigger><SelectValue placeholder="Colaborador: Todos"/></SelectTrigger></Select>
+            <Select><SelectTrigger><SelectValue placeholder="Supervisor: Todos"/></SelectTrigger></Select>
+            <Select><SelectTrigger><SelectValue placeholder="Banco: Todos"/></SelectTrigger></Select>
         </CardContent>
       </Card>
 
-      {/* Tabs dos Relatórios */}
-      <Tabs value={tipoRelatorio} onValueChange={setTipoRelatorio}>
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="vendas">
+        <TabsList>
           <TabsTrigger value="vendas">Vendas</TabsTrigger>
           <TabsTrigger value="comissoes">Comissões</TabsTrigger>
-          <TabsTrigger value="bancos">Por Banco</TabsTrigger>
+          <TabsTrigger value="por-banco">Por Banco</TabsTrigger>
           <TabsTrigger value="funil">Funil</TabsTrigger>
         </TabsList>
 
-        {/* Relatório de Vendas */}
-        <TabsContent value="vendas" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card className="shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
-                <DollarSign className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">R$ 2.462M</div>
-                <p className="text-xs text-muted-foreground">Nos últimos 3 meses</p>
-              </CardContent>
+        <TabsContent value="vendas" className="space-y-6 mt-4">
+            <div className="grid gap-4 md:grid-cols-4">
+                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total de Vendas</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(kpis.totalVendas)}</div></CardContent></Card>
+                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{kpis.qtdVendas}</div></CardContent></Card>
+                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta Atingida</CardTitle><Target className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-success">{kpis.metaAtingidaPercentual.toFixed(1)}%</div></CardContent></Card>
+                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ticket Médio</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(kpis.ticketMedio)}</div></CardContent></Card>
+            </div>
+            <Card>
+                <CardHeader><CardTitle>Vendas por Período</CardTitle></CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader><TableRow><TableHead>Período</TableHead><TableHead>Qtd. Vendas</TableHead><TableHead>Valor Total</TableHead><TableHead>Meta</TableHead><TableHead>Atingimento</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {vendasPorPeriodo.map(item => (<TableRow key={item.periodo}><TableCell className="font-medium">{item.periodo}</TableCell><TableCell>{item.qtdVendas}</TableCell><TableCell>{formatCurrency(item.valorTotal)}</TableCell><TableCell>{formatCurrency(item.valorMeta)}</TableCell><TableCell className={`font-bold ${item.atingimentoPercentual >= 100 ? 'text-success' : 'text-warning'}`}>{item.atingimentoPercentual.toFixed(1)}%</TableCell></TableRow>))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
             </Card>
+        </TabsContent>
 
-            <Card className="shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
-                <Users className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">45</div>
-                <p className="text-xs text-muted-foreground">Vendas realizadas</p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Meta Atingida</CardTitle>
-                <Target className="h-4 w-4 text-success" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-success">102.6%</div>
-                <p className="text-xs text-muted-foreground">Média dos períodos</p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-                <TrendingUp className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">R$ 54.711</div>
-                <p className="text-xs text-muted-foreground">Por venda</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle>Vendas por Período</CardTitle>
-            </CardHeader>
+        <TabsContent value="comissoes" className="mt-4">
+          <Card>
+            <CardHeader><CardTitle>Comissões por Responsável</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Período</TableHead>
-                    <TableHead>Qtd. Vendas</TableHead>
-                    <TableHead>Valor Total</TableHead>
-                    <TableHead>Meta</TableHead>
-                    <TableHead>Atingimento</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Responsável</TableHead><TableHead>Qtd. Vendas</TableHead><TableHead>Total Comissionado</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {dadosVendas.map((dado, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{dado.periodo}</TableCell>
-                      <TableCell>{dado.vendas}</TableCell>
-                      <TableCell>R$ {dado.valor.toLocaleString()}</TableCell>
-                      <TableCell>R$ {dado.meta.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <span className={dado.atingimento >= 100 ? "text-success font-medium" : "text-foreground"}>
-                          {dado.atingimento}%
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {comissoes.map(item => (<TableRow key={item.responsavelNome}><TableCell className="font-medium">{item.responsavelNome}</TableCell><TableCell>{item.qtdVendas}</TableCell><TableCell className="text-success font-bold">{formatCurrency(item.totalComissionado)}</TableCell></TableRow>))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Relatório de Comissões */}
-        <TabsContent value="comissoes" className="space-y-6">
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle>Comissões por Colaborador</CardTitle>
-            </CardHeader>
+        <TabsContent value="por-banco" className="mt-4">
+          <Card>
+            <CardHeader><CardTitle>Performance por Banco</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Colaborador</TableHead>
-                    <TableHead>Qtd. Vendas</TableHead>
-                    <TableHead>Valor Vendas</TableHead>
-                    <TableHead>Comissão</TableHead>
-                    <TableHead>Supervisor</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Banco</TableHead><TableHead>Qtd. Vendas</TableHead><TableHead>Valor Total</TableHead><TableHead>Participação (%)</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {dadosComissoes.map((dado, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{dado.colaborador}</TableCell>
-                      <TableCell>{dado.vendas}</TableCell>
-                      <TableCell>R$ {dado.valorVendas.toLocaleString()}</TableCell>
-                      <TableCell className="text-success font-medium">R$ {dado.comissao.toLocaleString()}</TableCell>
-                      <TableCell>{dado.supervisor}</TableCell>
-                    </TableRow>
-                  ))}
+                  {vendasPorBanco.map(item => (<TableRow key={item.banco}><TableCell className="font-medium">{item.banco}</TableCell><TableCell>{item.qtdVendas}</TableCell><TableCell>{formatCurrency(item.valorTotal)}</TableCell><TableCell><div className="flex items-center gap-2"><span>{item.percentual.toFixed(1)}%</span><Progress value={item.percentual} className="h-2 w-24" /></div></TableCell></TableRow>))}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Relatório por Banco */}
-        <TabsContent value="bancos" className="space-y-6">
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle>Performance por Banco</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Banco</TableHead>
-                    <TableHead>Qtd. Vendas</TableHead>
-                    <TableHead>Valor Total</TableHead>
-                    <TableHead>Participação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dadosBancos.map((dado, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{dado.banco}</TableCell>
-                      <TableCell>{dado.vendas}</TableCell>
-                      <TableCell>R$ {dado.valor.toLocaleString()}</TableCell>
-                      <TableCell>{dado.percentual}%</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+        
+        <TabsContent value="funil" className="mt-4">
+          <Card>
+            <CardHeader><CardTitle>Funil de Conversão do Período</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+                <div><div className="flex justify-between text-sm mb-1"><span>Propostas Criadas</span><span className="font-bold">{funil.propostasCriadas}</span></div><Progress value={100} /></div>
+                <div><div className="flex justify-between text-sm mb-1"><span>Em Análise</span><span className="font-bold">{funil.propostasEmAnalise}</span></div><Progress value={(funil.propostasEmAnalise / totalFunil) * 100} /></div>
+                <div><div className="flex justify-between text-sm mb-1"><span>Aprovadas</span><span className="font-bold">{funil.propostasAprovadas}</span></div><Progress value={(funil.propostasAprovadas / totalFunil) * 100} className="[&>*]:bg-success" /></div>
+                <div><div className="flex justify-between text-sm mb-1"><span>Recusadas</span><span className="font-bold">{funil.propostasRecusadas}</span></div><Progress value={(funil.propostasRecusadas / totalFunil) * 100} className="[&>*]:bg-destructive" /></div>
+                <div className="pt-4 border-t"><div className="flex justify-between font-semibold"><span>Taxa de Conversão</span><span className="text-success">{funil.taxaDeConversao.toFixed(1)}%</span></div></div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Funil de Conversão */}
-        <TabsContent value="funil" className="space-y-6">
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5" />
-                Funil de Conversão
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">245</div>
-                    <p className="text-sm text-muted-foreground">Propostas Criadas</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-warning">89</div>
-                    <p className="text-sm text-muted-foreground">Em Análise</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-success">156</div>
-                    <p className="text-sm text-muted-foreground">Convertidas</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>Taxa de Conversão Geral</span>
-                      <span className="font-bold text-success">63.7%</span>
-                    </div>
-                    <div className="w-full bg-secondary rounded-full h-3">
-                      <div className="bg-success h-3 rounded-full" style={{ width: "63.7%" }}></div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>Propostas em Análise</span>
-                      <span className="font-bold">36.3%</span>
-                    </div>
-                    <div className="w-full bg-secondary rounded-full h-3">
-                      <div className="bg-warning h-3 rounded-full" style={{ width: "36.3%" }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
