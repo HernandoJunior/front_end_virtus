@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { 
   Search, Plus, Filter, Edit, Upload, Loader2, 
-  Trash2
+  Trash2, ChevronLeft, ChevronRight, UserCog, X
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
@@ -33,6 +34,8 @@ export default function Clientes() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isReassignOpen, setIsReassignOpen] = useState(false);
+  
   const [client, setClient] = useState({
     nome: "",
     email: "",
@@ -57,45 +60,47 @@ export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [sortBy, setSortBy] = useState("default");
-  const [displayLimit, setDisplayLimit] = useState(20);
+  
+  // NOVOS FILTROS
+  const [colaboradorFilter, setColaboradorFilter] = useState("todos");
+  const [idadeMinFilter, setIdadeMinFilter] = useState("");
+  const [idadeMaxFilter, setIdadeMaxFilter] = useState("");
+  const [margemMinFilter, setMargemMinFilter] = useState("");
+  const [margemMaxFilter, setMargemMaxFilter] = useState("");
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  // ESTADOS PARA SELEÇÃO EM MASSA
+  const [selectedClients, setSelectedClients] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [newColaboradorId, setNewColaboradorId] = useState("");
 
   //FUNCOES DE IMPORTACAO E EXPORTACAO
   const handleChange = (e) => {
+    const { id, value } = e.target;
 
- const { id, value } = e.target;
+    let finalValue = value;
 
+    if (id === 'idade') {
+      finalValue = value === '' ? '' : parseInt(value, 10);
+    } else if (id === 'margem') {
+      finalValue = value === '' ? '' : parseFloat(value);
+    }
 
-
- let finalValue = value;
-
- if (id === 'idade') {
-
-  finalValue = value === '' ? '' : parseInt(value, 10);
-
- } else if (id === 'margem') {
-
-  finalValue = value === '' ? '' : parseFloat(value);
-
- }
-
-
-
- setClient(prevState => ({
-
-  ...prevState, // Copia todos os valores antigos do estado
-
-  [id]: value  // Atualiza apenas o campo que mudou
-
- }));
-
- };
+    setClient(prevState => ({
+      ...prevState,
+      [id]: value
+    }));
+  };
 
   // Exporta PDF
   const downloadPDF = () => {
     const doc = new jsPDF();
     autoTable(doc, {
-    head: [["ID", "Nome", "Email", "Idade", "Telefone", "Status"]],
-    body: listclient.map(c => [c.ID_CLIENTE, c.nome, c.email, c.idade, c.telefone, c.status ? "Ativo" : "Inativo"]),
+      head: [["ID", "Nome", "Email", "Idade", "Telefone", "Status"]],
+      body: listclient.map(c => [c.ID_CLIENTE, c.nome, c.email, c.idade, c.telefone, c.status ? "Ativo" : "Inativo"]),
     });
 
     doc.save("clientes.pdf");
@@ -112,9 +117,9 @@ export default function Clientes() {
   // Função geral
   const handleExport = () => {
     if (exportType === "pdf") {
-    downloadPDF();
+      downloadPDF();
     } else if (exportType === "excel") {
-    downloadExcel();
+      downloadExcel();
     }
   };
 
@@ -151,10 +156,10 @@ export default function Clientes() {
       alert("Cliente cadastrado com sucesso")
       navigate("/clientes")
     } catch (error) {
-    alert("Erro ao cadastrar cliente")
+      alert("Erro ao cadastrar cliente")
       console.log(client)
       console.log(error)
-      }
+    }
   }
 
   async function fetchclient() {
@@ -166,7 +171,8 @@ export default function Clientes() {
       setListclient([]);
     }
   }
-async function fetchColaborators() {
+
+  async function fetchColaborators() {
     try {
       const response = await api.get("/colaborador/listarcol");
       setColaborators(response.data || []);
@@ -175,14 +181,71 @@ async function fetchColaborators() {
     }
   }
 
-    // Funções de busca de dados (sem alterações)
+  // Funções de busca de dados
   useEffect(() => {
-      fetchColaborators();
-      fetchclient();
-    }, []);
+    fetchColaborators();
+    fetchclient();
+  }, []);
 
+  // FUNÇÃO PARA SELEÇÃO DE CLIENTES
+  const handleSelectClient = (clientId) => {
+    setSelectedClients(prev => {
+      if (prev.includes(clientId)) {
+        return prev.filter(id => id !== clientId);
+      } else {
+        return [...prev, clientId];
+      }
+    });
+  };
 
-  const clientsToDisplay = useMemo(() => {
+  // FUNÇÃO PARA SELECIONAR TODOS
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedClients([]);
+      setSelectAll(false);
+    } else {
+      const allIds = clientsToDisplay.map(c => c.ID_CLIENTE);
+      setSelectedClients(allIds);
+      setSelectAll(true);
+    }
+  };
+
+  // FUNÇÃO PARA REATRIBUIR CLIENTES
+  const handleReassignClients = async () => {
+    if (selectedClients.length === 0) {
+      alert("Selecione pelo menos um cliente");
+      return;
+    }
+    
+    if (!newColaboradorId) {
+      alert("Selecione um colaborador");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Requisição para o backend
+      await api.put("/clientes/reatribuir", {
+        clienteIds: selectedClients,
+        novoColaboradorId: newColaboradorId
+      });
+      
+      alert(`${selectedClients.length} cliente(s) reatribuído(s) com sucesso!`);
+      setSelectedClients([]);
+      setSelectAll(false);
+      setNewColaboradorId("");
+      setIsReassignOpen(false);
+      fetchclient(); // Atualiza a lista
+    } catch (error) {
+      alert("Erro ao reatribuir clientes!");
+      console.error("Detalhes do erro:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Lógica de filtragem e ordenação COM NOVOS FILTROS
+  const filteredClients = useMemo(() => {
     let processedClients = [...listclient];
 
     if (searchTerm) {
@@ -201,6 +264,45 @@ async function fetchColaborators() {
       );
     }
 
+    // FILTRO POR COLABORADOR
+    if (colaboradorFilter !== "todos") {
+      if (colaboradorFilter === "sem_colaborador") {
+        processedClients = processedClients.filter(client =>
+          !client.colaborador || client.colaborador.ID_COLABORADOR === null || !client.colaborador.nome
+        );
+      } else {
+        console.log("ELSE DO FILTRO COLABORADOR: ", colaboradorFilter)
+        console.log(processedClients)
+        processedClients = processedClients.filter(client =>
+          client.colaborador.id_COLABORADOR === colaboradorFilter
+        );
+      }
+    }
+
+    // FILTRO POR IDADE
+    if (idadeMinFilter) {
+      processedClients = processedClients.filter(client =>
+        client.idade >= parseInt(idadeMinFilter)
+      );
+    }
+    if (idadeMaxFilter) {
+      processedClients = processedClients.filter(client =>
+        client.idade <= parseInt(idadeMaxFilter)
+      );
+    }
+
+    // FILTRO POR MARGEM
+    if (margemMinFilter) {
+      processedClients = processedClients.filter(client =>
+        parseFloat(client.margem) >= parseFloat(margemMinFilter)
+      );
+    }
+    if (margemMaxFilter) {
+      processedClients = processedClients.filter(client =>
+        parseFloat(client.margem) <= parseFloat(margemMaxFilter)
+      );
+    }
+
     if (sortBy === 'alphabetical') {
       processedClients.sort((a, b) => {
         const nameA = a.nome || ''; 
@@ -209,20 +311,84 @@ async function fetchColaborators() {
       });
     }
 
-    if (displayLimit !== 1) {
-      return processedClients.slice(0, Number(displayLimit));
-    }
-
     return processedClients;
-  }, [listclient, searchTerm, statusFilter, sortBy, displayLimit]);
+  }, [listclient, searchTerm, statusFilter, sortBy, colaboradorFilter, 
+      idadeMinFilter, idadeMaxFilter, margemMinFilter, margemMaxFilter]);
+
+  // Lógica de paginação
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const clientsToDisplay = filteredClients.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset para página 1 quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, sortBy, colaboradorFilter, 
+      idadeMinFilter, idadeMaxFilter, margemMinFilter, margemMaxFilter]);
+
+  // Funções de navegação
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Gerar números de página para exibição
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
+    return pageNumbers;
+  };
 
   const resetFilters = () => {
     setSearchTerm("");
     setStatusFilter("todos");
     setSortBy("default");
-    Number(setDisplayLimit(20));
+    setColaboradorFilter("todos");
+    setIdadeMinFilter("");
+    setIdadeMaxFilter("");
+    setMargemMinFilter("");
+    setMargemMaxFilter("");
+    setCurrentPage(1);
     setIsFilterOpen(false);
   };
+
+  // Contador de filtros ativos
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter !== "todos") count++;
+    if (colaboradorFilter !== "todos") count++;
+    if (idadeMinFilter) count++;
+    if (idadeMaxFilter) count++;
+    if (margemMinFilter) count++;
+    if (margemMaxFilter) count++;
+    if (sortBy !== "default") count++;
+    return count;
+  }, [statusFilter, colaboradorFilter, idadeMinFilter, idadeMaxFilter, 
+      margemMinFilter, margemMaxFilter, sortBy]);
 
   const deleteClient = async (client) => {
     if(!client){
@@ -233,12 +399,12 @@ async function fetchColaborators() {
     try {
       const response = await api.delete(`/clientes/deleteClient/${client.ID_CLIENTE}`)
       alert("Cliente deletado com sucesso!")
+      fetchclient();
     } catch (error) {
       alert("Nao pode ser deletado cliente com vendas registradas!")
       console.log(error)
     }
   }
-
 
   return (
     <div className="space-y-6">
@@ -408,16 +574,19 @@ async function fetchColaborators() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
-                  Filtros e Ordenação
+                  Filtros {activeFiltersCount > 0 && `(${activeFiltersCount})`}
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Opções de Exibição</DialogTitle>
+                  <DialogTitle>Filtros e Ordenação</DialogTitle>
+                  <DialogDescription>
+                    Configure os filtros para refinar sua busca
+                  </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <Label>Filtrar por Status</Label>
+                <div className="grid grid-cols-2 gap-4 py-4">
+                  <div className="col-span-2">
+                    <Label>Status</Label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
@@ -427,30 +596,70 @@ async function fetchColaborators() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="col-span-2">
+                    <Label>Colaborador Responsável</Label>
+                    <Select value={colaboradorFilter} onValueChange={setColaboradorFilter}>
+                      <SelectTrigger><SelectValue placeholder="Todos os colaboradores"/></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="sem_colaborador">Sem Colaborador</SelectItem>
+                        {colaborators.map(colaborador => (
+                          <SelectItem key={colaborador.ID_COLABORADOR} value={colaborador.ID_COLABORADOR}>
+                            {colaborador.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div>
+                    <Label>Idade Mínima</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Ex: 18"
+                      value={idadeMinFilter}
+                      onChange={(e) => setIdadeMinFilter(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Idade Máxima</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Ex: 65"
+                      value={idadeMaxFilter}
+                      onChange={(e) => setIdadeMaxFilter(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Margem Mínima (R$)</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Ex: 10000"
+                      value={margemMinFilter}
+                      onChange={(e) => setMargemMinFilter(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Margem Máxima (R$)</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Ex: 50000"
+                      value={margemMaxFilter}
+                      onChange={(e) => setMargemMaxFilter(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="col-span-2">
                     <Label>Ordenar por</Label>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="default">Padrão</SelectItem>
                         <SelectItem value="alphabetical">Ordem Alfabética (A-Z)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Exibir por página</Label>
-                    <Select
-                      value={String(displayLimit)}
-                      onValueChange={(val) => setDisplayLimit(Number(val))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue/>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="20">20 clientes</SelectItem>
-                        <SelectItem value="50">50 clientes</SelectItem>
-                        <SelectItem value="100">100 clientes</SelectItem>
-                        <SelectItem value="1">Todos os clientes</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -461,14 +670,106 @@ async function fetchColaborators() {
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* BOTÃO DE REATRIBUIÇÃO EM MASSA */}
+            {selectedClients.length > 0 && (
+              <Button variant="default" size="sm" onClick={() => setIsReassignOpen(true)}>
+                <UserCog className="h-4 w-4 mr-2" />
+                Reatribuir ({selectedClients.length})
+              </Button>
+            )}
           </div>
+
+          {/* Tags de filtros ativos */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {statusFilter !== "todos" && (
+                <Badge variant="secondary" className="gap-1">
+                  Status: {statusFilter}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter("todos")} />
+                </Badge>
+              )}
+              {colaboradorFilter !== "todos" && (
+                <Badge variant="secondary" className="gap-1">
+                  Colaborador: {colaborators.find(c => c.ID_COLABORADOR === colaboradorFilter)?.nome}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => setColaboradorFilter("todos")} />
+                </Badge>
+              )}
+              {idadeMinFilter && (
+                <Badge variant="secondary" className="gap-1">
+                  Idade min: {idadeMinFilter}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => setIdadeMinFilter("")} />
+                </Badge>
+              )}
+              {idadeMaxFilter && (
+                <Badge variant="secondary" className="gap-1">
+                  Idade max: {idadeMaxFilter}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => setIdadeMaxFilter("")} />
+                </Badge>
+              )}
+              {margemMinFilter && (
+                <Badge variant="secondary" className="gap-1">
+                  Margem min: R$ {margemMinFilter}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => setMargemMinFilter("")} />
+                </Badge>
+              )}
+              {margemMaxFilter && (
+                <Badge variant="secondary" className="gap-1">
+                  Margem max: R$ {margemMaxFilter}
+                  <X className="h-3 w-3 cursor-pointer" onClick={() => setMargemMaxFilter("")} />
+                </Badge>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* DIALOG DE REATRIBUIÇÃO */}
+      <Dialog open={isReassignOpen} onOpenChange={setIsReassignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reatribuir Clientes</DialogTitle>
+            <DialogDescription>
+              Selecione o novo colaborador responsável para {selectedClients.length} cliente(s) selecionado(s)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Novo Colaborador</Label>
+              <Select value={newColaboradorId} onValueChange={setNewColaboradorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o colaborador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {colaborators.map(colaborador => (
+                    <SelectItem key={colaborador.ID_COLABORADOR} value={colaborador.ID_COLABORADOR.toString()}>
+                      {colaborador.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsReassignOpen(false)} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleReassignClients} disabled={isLoading || !newColaboradorId}>
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...</>
+              ) : (
+                'Confirmar Reatribuição'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          Exibindo {clientsToDisplay.length} de {listclient.length} clientes.
+          Exibindo {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredClients.length)} de {filteredClients.length} clientes
+          {selectedClients.length > 0 && ` • ${selectedClients.length} selecionado(s)`}
         </span>
       </div>
 
@@ -478,21 +779,33 @@ async function fetchColaborators() {
           <Table>
             <TableHeader>
               <TableRow>
-                 <TableHead>Responsável</TableHead>
-                 <TableHead>Nome</TableHead>
-                 <TableHead>CPF</TableHead>
-                 <TableHead>Margem</TableHead>
-                 <TableHead>Idade</TableHead>
-                 <TableHead>Telefone</TableHead>
-                 <TableHead>Email</TableHead>
-                 <TableHead>Status</TableHead>
-                 <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-12">
+                  <Checkbox 
+                    checked={selectAll}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
+                <TableHead>Responsável</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>CPF</TableHead>
+                <TableHead>Margem</TableHead>
+                <TableHead>Idade</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clientsToDisplay.map((cliente) => (
                 <TableRow key={cliente.ID_CLIENTE}>
-                  <TableCell className="font-medium">{cliente.nomeColaborador}</TableCell>
+                  <TableCell>
+                    <Checkbox 
+                      checked={selectedClients.includes(cliente.ID_CLIENTE)}
+                      onCheckedChange={() => handleSelectClient(cliente.ID_CLIENTE)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{cliente.colaborador ? cliente.colaborador.nome : "Colaborador nao vinculado"}</TableCell>
                   <TableCell>{cliente.nome}</TableCell>
                   <TableCell>{cliente.cpf}</TableCell>
                   <TableCell className="font-bold text-success">{cliente.margem}</TableCell>
@@ -514,11 +827,79 @@ async function fetchColaborators() {
               ))}
             </TableBody>
           </Table>
+
+          {/* Controles de Paginação */}
+          {filteredClients.length > 0 && (
+            <div className="flex items-center justify-between p-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* Seletor de itens por página */}
+                <div className="flex items-center gap-2 mr-4">
+                  <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">
+                    Itens por página:
+                  </Label>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => {
+                      setItemsPerPage(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Botão anterior */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={prevPage}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {/* Números de página */}
+                {getPageNumbers().map((pageNumber) => (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(pageNumber)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNumber}
+                  </Button>
+                ))}
+
+                {/* Botão próximo */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={nextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Empty State */}
-      {clientsToDisplay.length === 0 && (
+      {filteredClients.length === 0 && (
         <Card className="shadow-card">
           <CardContent className="py-12">
             <div className="text-center">

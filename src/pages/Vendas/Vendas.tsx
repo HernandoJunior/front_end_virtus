@@ -9,17 +9,17 @@ import {
   DollarSign,
   Plus,
   Search,
-  Filter,
   Download,
-  Calendar,
   Upload,
   Users,
   Building,
   CreditCard,
-  Eye,
   Edit,
   Trash2,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -43,18 +43,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter, // Importação do TableFooter
+  TableFooter,
 } from "@/components/ui/table";
 import { api } from "@/services/api";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import { AlertTitle } from "@/components/ui/alert";
 
 export default function Vendas() {
-  const [vendas, setVenda] = useState({
+  const [vendaForm, setVendaForm] = useState({
     ID_COLABORADOR: "",
     ID_SUPERVISOR: "",
     cpfCliente: "",
@@ -68,62 +67,269 @@ export default function Vendas() {
     linha_venda: "",
     prazo: "",
     banco: "",
+    produtoVenda: "",
+    nomeCliente: "",
   });
+
+  // Estado para o usuário logado
+  const [currentUser, setCurrentUser] = useState({ role: null, id: null });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-
-  // Estados dos dados e da UI
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
-  const navigate = useNavigate();
-
-  // Estados centralizados para filtros e ordenação
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("todos");
-  const [sortBy, setSortBy] = useState("default");
-  const [displayLimit, setDisplayLimit] = useState(20);
-  const doc = new jsPDF();
-
   const [listVendas, setListVendas] = useState([]);
   const [saleTotal, setSaleTotal] = useState({
-    valorTotalVendas: 0,
-    totalVendasMesAtual: 0,
+    maiorValorMes: 0,
+    menorVenda: 0,
+    valorComissaoColaboradorClt: 0,
+    valorComissaoColaboradorMei: 0,
+    valorComissaoEmpresa: 0,
+    valorTotalMesAtual: 0,
     variacaoPercentual: 0,
     quantidadeTotal: 0,
-    comissaoTotal: 0,
     ticketMedio: 0,
   });
 
-  // Novos estados para os filtros
+  // Filtros da UI
   const [colaboradorFilter, setColaboradorFilter] = useState("todos");
   const [dataInicialFilter, setDataInicialFilter] = useState("");
   const [dataFinalFilter, setDataFinalFilter] = useState("");
-  const [statusVendaFilter, setStatusVendaFilter] = useState("todos");
+  
+  // NOVOS FILTROS ADICIONADOS
+  const [ordenacaoValor, setOrdenacaoValor] = useState(""); // "crescente", "decrescente", ""
+  const [bancoFilter, setBancoFilter] = useState("todos");
 
-  // Estado para armazenar os totais calculados com base nos filtros
-  const [filteredSaleTotals, setFilteredSaleTotals] = useState({
-    valorTotalVendas: 0,
-    quantidadeTotal: 0,
-    comissaoTotal: 0,
-    ticketMedio: 0,
-  });
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  //Estado para armazenar lista de colaboradores
   const [colaborators, setColaborators] = useState([]);
-  //Estado para armazenar lista de supervisores
   const [supervisors, setSupervisors] = useState([]);
-  const [exportType, setExportType] = useState(""); // pdf ou excel
+  const [exportType, setExportType] = useState("");
 
-  // Exporta PDF
+  // Efeito para buscar dados do usuário logado do localStorage
+  useEffect(() => {
+    const userDataString = localStorage.getItem("@virtus:user");
+    console.log(userDataString)
+    if (userDataString) {
+      const userData = JSON.parse(userDataString);
+      setCurrentUser({ role: userData.role, id: userData.id });
+    }
+  }, []);
+
+  // Efeito para buscar dados iniciais (vendas, colaboradores, supervisores, KPIs)
+  useEffect(() => {
+    const fetchUserVendas = async () => {
+      try {
+        const response = await api.get("/vendas/listarven");
+        setListVendas(response.data);
+      } catch (error) {
+        console.error("Erro ao carregar vendas:", error);
+        alert("Não foi possível carregar a lista de vendas.");
+      }
+    };
+
+    const fetchTotalSalesKPI = async () => {
+      if (["ADMIN", "SUPERVISOR"].includes(currentUser.role)) {
+        try {
+          const req = await api.get("/vendas/mes");
+          setSaleTotal(req.data);
+        } catch (error) {
+          console.error(
+            "Nao foi possivel carregar os totais de vendas:",
+            error
+          );
+        }
+      }
+    };
+
+    const fetchSelectOptions = async () => {
+      try {
+        const [colabRes, superRes] = await Promise.all([
+          api.get("/colaborador/listarcol"),
+          api.get("/supervisor/listarsupervisores"),
+        ]);
+        setColaborators(colabRes.data);
+        setSupervisors(superRes.data);
+      } catch (error) {
+        console.error("Erro ao buscar colaboradores ou supervisores:", error);
+      }
+    };
+
+    fetchUserVendas();
+    fetchTotalSalesKPI();
+    fetchSelectOptions();
+  }, [currentUser]);
+
+  // Extrair bancos únicos para o filtro (com tratamento para valores nulos/vazios)
+  const bancosUnicos = [...new Set(listVendas
+    .map(venda => venda.banco)
+    .filter(banco => banco && banco.trim() !== "")
+  )];
+
+  // Lógica de filtragem e cálculo de totais NO FRONTEND
+  const filteredSales = listVendas
+    .filter((venda) => {
+      const searchTermLower = searchTerm.toLowerCase();
+
+      const matchSearch =
+        searchTerm === "" ||
+        (venda.nomeCliente &&
+          venda.nomeCliente.toLowerCase().includes(searchTermLower)) ||
+        (venda.cpfCliente && venda.cpfCliente.includes(searchTerm)) ||
+        (venda.nomeColaborador &&
+          venda.nomeColaborador.toLowerCase().includes(searchTermLower));
+
+      const matchColaborador =
+        colaboradorFilter === "todos" ||
+        venda.ID_COLABORADOR == colaboradorFilter;
+
+      // NOVO: Filtro por banco
+      const matchBanco =
+        bancoFilter === "todos" || venda.banco === bancoFilter;
+
+      // Adiciona a lógica para ignorar o time da data, tratando apenas o dia
+      const matchDataInicial =
+        !dataInicialFilter ||
+        new Date(venda.dataPagamento).setHours(0, 0, 0, 0) >=
+          new Date(dataInicialFilter).setHours(0, 0, 0, 0);
+      const matchDataFinal =
+        !dataFinalFilter ||
+        new Date(venda.dataPagamento).setHours(0, 0, 0, 0) <=
+          new Date(dataFinalFilter).setHours(0, 0, 0, 0);
+
+      // Se for USER, o filtro de colaborador não se aplica na UI, pois a lista da API já vem filtrada
+      if (currentUser.role === "USER") {
+        return matchSearch && matchDataInicial && matchDataFinal && matchBanco;
+      }
+
+      return (
+        matchSearch && matchColaborador && matchDataInicial && matchDataFinal && matchBanco
+      );
+    })
+    // NOVO: Ordenação por valor
+    .sort((a, b) => {
+      if (ordenacaoValor === "crescente") {
+        return (a.valorLiberado || 0) - (b.valorLiberado || 0);
+      } else if (ordenacaoValor === "decrescente") {
+        return (b.valorLiberado || 0) - (a.valorLiberado || 0);
+      }
+      return 0; // Sem ordenação
+    });
+
+  // Lógica de paginação
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset para página 1 quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    colaboradorFilter,
+    dataInicialFilter,
+    dataFinalFilter,
+    bancoFilter,
+    ordenacaoValor,
+    filteredSales.length,
+  ]);
+
+  // Funções de navegação
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Gerar números de página para exibição
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    // Ajustar startPage se endPage estiver no limite
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return pageNumbers;
+  };
+
+  const filteredSaleTotals = (() => {
+    const valorTotal = filteredSales.reduce(
+      (acc, v) => acc + (v.valorLiberado || 0),
+      0
+    );
+
+    const maiorValor = filteredSales.reduce(
+      (acc, v) => Math.max(acc, v.valorLiberado || 0),
+      0
+    );
+
+    const menorValor = filteredSales.reduce(
+      (acc, v) => {
+        const valor = v.valorLiberado;
+        return valor > 0 ? Math.min(acc, valor) : acc;
+    }, Infinity);
+
+    const quantidadeTotal = filteredSales.length;
+
+    const comissaoEmpresa = filteredSales.reduce(
+      (acc, v) => acc + (v.comissaoEmpresa || 0),
+      0
+    );
+
+    let comissaoColaborador = filteredSales.reduce(
+      (acc, v) => acc + (v.comissaoColaborador || 0),
+      0
+    );
+
+    const comissaoColaboradorClt = comissaoColaborador * (27 / 100);
+
+    const comissaoColaboradorMei = comissaoColaborador * (35 / 100);
+
+    const ticketMedio = quantidadeTotal > 0 ? valorTotal / quantidadeTotal : 0;
+
+    return {
+      maiorValorMes: maiorValor,
+      menorVenda: menorValor,
+      valorTotalMesAtual: valorTotal,
+      valorComissaoColaboradorClt: comissaoColaboradorClt,
+      valorComissaoColaboradorMei: comissaoColaboradorMei,
+      valorComissaoEmpresa: comissaoEmpresa,
+      quantidadeTotal: quantidadeTotal,
+      ticketMedio: ticketMedio,
+    };
+  })();
+
+  const displayTotals = filteredSaleTotals;
+
   const downloadPDF = () => {
-    // Escolhe a lista a ser exportada: filtrada se existir, senão a lista completa
-    const dataToExport = filteredSales.length > 0 ? filteredSales : listVendas;
-
+    const dataToExport = filteredSales;
     const doc = new jsPDF({
-      orientation: "landscape", // 🔑 A4 na horizontal
+      orientation: "landscape",
       unit: "mm",
       format: "a4",
     });
@@ -133,6 +339,7 @@ export default function Vendas() {
           "ID",
           "Banco",
           "Linha",
+          "Produto Venda",
           "Agente",
           "Cidade",
           "Valor Liberado",
@@ -149,18 +356,19 @@ export default function Vendas() {
       body: dataToExport.map((c) => [
         c.ID_VENDA,
         c.banco,
-        c.linha,
+        c.linha_venda,
+        c.produtoVenda,
         c.nomeColaborador,
         c.cidadeVenda,
-        c.valorLiberado,
+        formatCurrency(c.valorLiberado),
         c.prazo,
-        c.taxa,
-        c.comissaoEmpresa,
-        c.comissaoColaborador,
+        `${c.taxa}%`,
+        formatCurrency(c.comissaoEmpresa),
+        formatCurrency(c.comissaoColaborador),
         c.promotora,
         c.dataPagamento,
-        c.cliente.nome,
-        c.cliente.cpf,
+        c.nomeCliente,
+        c.cpfCliente,
       ]),
       headStyles: {
         minCellHeight: 15,
@@ -169,18 +377,15 @@ export default function Vendas() {
         valign: "middle",
       },
     });
-
     doc.save("vendas.pdf");
   };
 
   const downloadExcel = () => {
-    // Escolhe a lista a ser exportada: filtrada se existir, senão a lista completa
-    const dataToExport = filteredSales.length > 0 ? filteredSales : listVendas;
-    
-    // Define cabeçalho igual ao PDF
+    const dataToExport = filteredSales;
     const header = [
       "ID",
       "Banco",
+      "Produto Venda",
       "Linha",
       "Agente",
       "Cidade",
@@ -194,12 +399,11 @@ export default function Vendas() {
       "Cliente",
       "CPF",
     ];
-
-    // Converte os dados para formato de array (mantendo ordem das colunas)
     const data = dataToExport.map((c) => [
       c.ID_VENDA,
       c.banco,
-      c.linha,
+      c.produtoVenda,
+      c.linha_venda,
       c.nomeColaborador,
       c.cidadeVenda,
       c.valorLiberado,
@@ -209,72 +413,58 @@ export default function Vendas() {
       c.comissaoColaborador,
       c.promotora,
       c.dataPagamento,
-      c.cliente.nome,
-      c.cliente.cpf,
+      c.nomeCliente,
+      c.cpfCliente,
     ]);
-
-    // Cria a planilha com cabeçalho + dados
     const worksheet = XLSX.utils.aoa_to_sheet([header, ...data]);
-
-    // Ajusta largura das colunas
     worksheet["!cols"] = [
-      { wch: 10 }, // ID
-      { wch: 15 }, // Banco
-      { wch: 15 }, // Linha
-      { wch: 20 }, // Agente
-      { wch: 20 }, // Cidade
-      { wch: 18 }, // Valor Liberado
-      { wch: 10 }, // Prazo
-      { wch: 10 }, // Taxa
-      { wch: 20 }, // Comissão Empresa
-      { wch: 20 }, // Comissão Agente
-      { wch: 18 }, // Promotora
-      { wch: 20 }, // Data Pagamento
-      { wch: 25 }, // Cliente
-      { wch: 18 }, // CPF
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 25 },
+      { wch: 18 },
     ];
-
-    // Deixa o cabeçalho em negrito
     header.forEach((h, i) => {
-      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: i }); // linha 0 = cabeçalho
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: i });
       if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
       worksheet[cellAddress].s = {
         font: { bold: true, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "4472C4" } }, // fundo azul
+        fill: { fgColor: { rgb: "4472C4" } },
         alignment: { horizontal: "center", vertical: "center" },
       };
     });
-
-    // Cria o arquivo
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes");
-    XLSX.writeFile(workbook, "clientes.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Vendas");
+    XLSX.writeFile(workbook, "vendas.xlsx");
   };
 
-  // Função geral
   const handleExport = () => {
-    if (exportType === "pdf") {
-      downloadPDF();
-    } else if (exportType === "excel") {
-      downloadExcel();
-    }
+    if (exportType === "pdf") downloadPDF();
+    else if (exportType === "excel") downloadExcel();
   };
 
   async function handleUpload() {
-    if (!selectedFile) {
-      alert("Por favor, selecione um arquivo para importar.");
-      return;
-    }
+    if (!selectedFile)
+      return alert("Por favor, selecione um arquivo para importar.");
     const formData = new FormData();
     setIsLoading(true);
     formData.append("file", selectedFile);
-
     try {
-      const response = await api.post("/vendas/upload", formData, {});
+      await api.post("/vendas/upload", formData);
       alert("Arquivo enviado com sucesso!");
       setIsImportOpen(false);
-      // Opcional: recarregar a lista de clientes após o upload
-      // fetchclient();
+      // Recarrega os dados para exibir a planilha importada
+      const response = await api.get("/vendas/listarven");
+      setListVendas(response.data);
     } catch (error) {
       alert("Erro ao importar arquivo!");
       console.error("Detalhes do erro:", error);
@@ -283,256 +473,89 @@ export default function Vendas() {
     }
   }
 
-  const handleFileChange = (event) => {
-    setSelectedFile(event.target.files[0]);
-  };
+  const handleFileChange = (event) => setSelectedFile(event.target.files[0]);
 
-  //Funcao para buscar colaboradores
-  async function fetchColaborators() {
-    try {
-      const response = await api.get("/colaborador/listarcol");
-      setColaborators(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar colaboradores:", error);
-    }
-  }
-
-  // Função para buscar os supervisores
-  async function fetchSupervisors() {
-    try {
-      const response = await api.get("/supervisor/listarsupervisores");
-      setSupervisors(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar supervisores:", error);
-    }
-  }
-
-  async function fetchVendas(filters = {}) {
-    try {
-      const params = new URLSearchParams(filters).toString();
-      const response = await api.get(`/vendas/listarven?${params}`);
-      setListVendas(response.data);
-    } catch (error) {
-      console.log(error);
-      alert("Erro ao carregar vendas");
-    }
-  }
-
-  // Função de busca principal que junta todos os filtros
-  const handleSearch = () => {
-    const filters = {
-      q: searchTerm,
-      colaboradorId: colaboradorFilter !== "todos" ? colaboradorFilter : "",
-      dataInicial: dataInicialFilter,
-      dataFinal: dataFinalFilter,
-      status: statusVendaFilter !== "todos" ? statusVendaFilter : "",
-    };
-    fetchVendas(filters);
-  };
-
-  // Buscar colaboradores, supervisores e vendas
-  useEffect(() => {
-    fetchColaborators();
-    fetchSupervisors();
-    fetchVendas();
-  }, []);
-
-  // UseEffect para chamar a busca toda vez que um filtro muda
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSearch();
-    }, 500); // Debounce de 500ms para evitar requisições a cada tecla digitada
-    return () => clearTimeout(timeoutId);
-  }, [
-    searchTerm,
-    colaboradorFilter,
-    dataInicialFilter,
-    dataFinalFilter,
-    statusVendaFilter,
-  ]);
-
-  //Definicao de cor do Status da venda
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Concluido":
-        return "bg-success text-success-foreground";
-      case "Processando":
-        return "bg-warning text-warning-foreground";
-      case "Inativa":
-        return "bg-destructive text-destructive-foreground";
-      default:
-        return "bg-secondary text-secondary-foreground";
-    }
-  };
-
-  //Salvando informacoes do formulario de cadastro de vendas
   const handleChangeForm = (e) => {
     const { id, value } = e.target;
-
-    let finalValue = value;
-
-    if (id === "valorLiberado") {
-      finalValue = value === "" ? "" : parseInt(value);
-    } else if (id === "comissaoColaborador") {
-      finalValue = value === "" ? "" : parseFloat(value);
-    } else if (id === "comissaoEmpresa") {
-      finalValue = value === "" ? "" : parseFloat(value);
-    } else if (id === "taxa") {
-      finalValue = value === "" ? "" : parseFloat(value);
-    }
-
-    setVenda((prevState) => ({
-      ...prevState, // Copia todos os valores antigos do estado
-      [id]: value, // Atualiza apenas o campo que mudou
-    }));
+    setVendaForm((prevState) => ({ ...prevState, [id]: value }));
   };
 
-  //Cadastro de vendas
   async function cadastrarVenda() {
-    if (
-      !vendas.ID_COLABORADOR ||
-      !vendas.ID_SUPERVISOR ||
-      !vendas.cpfCliente ||
-      !vendas.valorLiberado ||
-      !vendas.comissaoColaborador ||
-      !vendas.comissaoEmpresa ||
-      !vendas.taxa ||
-      !vendas.cidadeVenda ||
-      !vendas.promotora ||
-      !vendas.dataPagamento ||
-      !vendas.linha_venda ||
-      !vendas.prazo ||
-      !vendas.banco
-    ) {
-      return alert("Preencha todos os campos");
-    }
-
+    const requiredFields = [
+      "ID_COLABORADOR",
+      "ID_SUPERVISOR",
+      "cpfCliente",
+      "valorLiberado",
+      "comissaoEmpresa",
+      "taxa",
+      "cidadeVenda",
+      "promotora",
+      "dataPagamento",
+      "linha_venda",
+      "prazo",
+      "banco",
+    ];
     try {
-      const req = await api.post("/vendas/cadastrarven", vendas);
+      await api.post("/vendas/cadastrarven", vendaForm);
       alert("Venda cadastrada com sucesso!");
       setIsDialogOpen(false);
-      // navigate(-1)
+      // Recarrega a lista
+      const response = await api.get("/vendas/listarven");
+      setListVendas(response.data);
     } catch (error) {
-      alert("Erro ao cadastrar venda");
+      alert(
+        "Erro ao cadastrar venda. Verifique os dados"
+      );
       console.log(error);
-      console.log(vendas);
     }
   }
 
-  //Lista de vendas realizadas
-  useEffect(() => {
-    async function listSales() {
-      try {
-        const req = await api.get("/vendas/mes");
-        setSaleTotal(req.data);
-      } catch (error) {
-        console.log(error);
-        alert("Nao foi possivel carregar as vendas do mes");
-      }
-    }
-    listSales();
-  }, []);
-
   async function deleteSale(sale) {
-    if (!sale) {
-      alert("Erro: Informações do usuário incompletas. Não é possível deletar.");
+    if (!sale || isNaN(sale.ID_VENDA))
+      return alert("Erro: Informações da venda inválidas.");
+    if (
+      !window.confirm(
+        `Tem certeza que deseja excluir a venda de valor "${formatCurrency(
+          sale.valorLiberado
+        )}"?`
+      )
+    )
       return;
-    }
-
-    const isConfirmed = window.confirm(
-      `Tem certeza que deseja excluir a venda "${sale.valorLiberado}"? Esta ação não pode ser desfeita.`
-    );
-
-    if (!isConfirmed) {
-      return;
-    }
-
-    const idParaDeletar = sale.ID_VENDA;
-    if (isNaN(idParaDeletar)) {
-      alert(`Erro: A venda "${sale.valorLiberado}" nao possui um ID inválido.`);
-      return;
-    }
-
     try {
-      const id_venda = parseInt(sale.ID_VENDA);
-      const reponse = await api.delete(`/vendas/deleteVenda/${id_venda}`);
+      await api.delete(`/vendas/deleteVenda/${sale.ID_VENDA}`);
       alert("Venda deletada com sucesso!");
-      fetchVendas();
+      setListVendas((prevVendas) =>
+        prevVendas.filter((v) => v.ID_VENDA !== sale.ID_VENDA)
+      );
     } catch (error) {
       alert("Erro ao deletar venda!");
       console.log(error);
     }
   }
 
-  // Lógica de filtro no frontend
-  const filteredSales = listVendas.filter((venda) => {
-    const matchSearch =
-      searchTerm === "" ||
-      (venda.nomeCliente &&
-        venda.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (venda.cpfCliente && venda.cpfCliente.includes(searchTerm));
+  const getStatusColor = (status) => {
+    switch (status) {
+      case true:
+        return "bg-success text-success-foreground";
+      case false:
+        return "bg-destructive text-destructive-foreground";
+      default:
+        return "bg-secondary text-secondary-foreground";
+    }
+  };
 
-    const matchColaborador =
-      colaboradorFilter === "todos" ||
-      venda.ID_COLABORADOR == colaboradorFilter; // Use == para comparar number e string
-
-    const matchStatus =
-      statusVendaFilter === "todos" ||
-      (venda.status &&
-        venda.status.toLowerCase() === statusVendaFilter.toLowerCase());
-
-    const matchDataInicial =
-      dataInicialFilter === "" ||
-      new Date(venda.dataPagamento) >= new Date(dataInicialFilter);
-
-    const matchDataFinal =
-      dataFinalFilter === "" ||
-      new Date(venda.dataPagamento) <= new Date(dataFinalFilter);
-
-    return (
-      matchSearch &&
-      matchColaborador &&
-      matchStatus &&
-      matchDataInicial &&
-      matchDataFinal
-    );
-  });
-
-  // useEffect para recalcular os KPIs sempre que filteredSales mudar
-  useEffect(() => {
-    const valorTotal = filteredSales.reduce(
-      (acc, venda) => acc + (venda.valorLiberado || 0),
-      0
-    );
-    const quantidadeTotal = filteredSales.length;
-    const comissaoTotal = filteredSales.reduce(
-      (acc, venda) =>
-        acc + (venda.comissaoColaborador || 0) + (venda.comissaoEmpresa || 0),
-      0
-    );
-    const ticketMedio = quantidadeTotal > 0 ? valorTotal / quantidadeTotal : 0;
-
-    setFilteredSaleTotals({
-      valorTotalVendas: valorTotal,
-      quantidadeTotal: quantidadeTotal,
-      comissaoTotal: comissaoTotal,
-      ticketMedio: ticketMedio,
-    });
-  }, [filteredSales]);
+  console.log(currentUser)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Vendas</h1>
           <p className="text-muted-foreground">
-            Registre e gerencie todas as vendas realizadas
+            Registre e gerencie as vendas realizadas
           </p>
         </div>
-
         <div className="flex items-center gap-2">
-          {/* IMPORTACAO CARD */}
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -541,7 +564,7 @@ export default function Vendas() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Importação para o sistema</DialogTitle>
+                <DialogTitle>Importação de Vendas</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <Input type="file" onChange={handleFileChange} />
@@ -571,39 +594,35 @@ export default function Vendas() {
             </DialogContent>
           </Dialog>
 
-          {/* EXPORTACAO CARD */}
           <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar
+                <Download className="h-4 w-4 mr-2" /> Exportar
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Exportacao</DialogTitle>
-                <DialogDescription>
-                  Exportacao de vendas do sistema
-                </DialogDescription>
+                <DialogTitle>Exportação de Vendas</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="tipo">Tipo</Label>
-                  <Select onValueChange={setExportType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o formato" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pdf">PDF</SelectItem>
-                      <SelectItem value="excel">Excel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Label htmlFor="tipo">Formato</Label>
+                <Select onValueChange={setExportType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o formato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pdf">PDF</SelectItem>
+                    <SelectItem value="excel">Excel</SelectItem>
+                  </SelectContent>
+                </Select>
                 <div className="flex gap-2 pt-4">
                   <Button className="flex-1" onClick={handleExport}>
                     Exportar
                   </Button>
-                  <Button variant="outline" onClick={() => setIsExportOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsExportOpen(false)}
+                  >
                     Cancelar
                   </Button>
                 </div>
@@ -611,19 +630,17 @@ export default function Vendas() {
             </DialogContent>
           </Dialog>
 
-          {/* CADASTRO DE NOVA VENDA */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Venda
+                <Plus className="h-4 w-4 mr-2" /> Nova Venda
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Registrar Nova Venda</DialogTitle>
                 <DialogDescription>
-                  Registre uma nova venda no sistema
+                  Preencha os dados da nova venda no sistema.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -631,39 +648,42 @@ export default function Vendas() {
                   <Label htmlFor="cpfCliente">CPF Cliente</Label>
                   <Input
                     id="cpfCliente"
-                    type="number"
-                    placeholder="02590899544"
+                    type="text"
+                    placeholder="000.000.000-00"
                     onChange={handleChangeForm}
                   />
                 </div>
+
+                <div>
+                  <Label htmlFor="nomeCliente">Nome Cliente</Label>
+                  <Input
+                    id="nomeCliente"
+                    type="text"
+                    placeholder="Nome do Cliente"
+                    onChange={handleChangeForm}
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="valorLiberado">Valor da Venda (R$)</Label>
                   <Input
                     id="valorLiberado"
                     type="number"
-                    placeholder="45000"
+                    placeholder="45000.00"
                     onChange={handleChangeForm}
                   />
                 </div>
+
                 <div>
                   <Label htmlFor="prazo">Prazo</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      setVenda((prevState) => ({ ...prevState, prazo: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o prazo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="24x">24X</SelectItem>
-                      <SelectItem value="48X">48X</SelectItem>
-                      <SelectItem value="84x">84X</SelectItem>
-                      <SelectItem value="96x">96X</SelectItem>
-                      <SelectItem value="120x">120X</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="prazo"
+                    type="text"
+                    placeholder="120x"
+                    onChange={handleChangeForm}
+                  />
                 </div>
+
                 <div>
                   <Label htmlFor="promotora">Promotora</Label>
                   <Input
@@ -673,10 +693,9 @@ export default function Vendas() {
                     onChange={handleChangeForm}
                   />
                 </div>
+
                 <div>
-                  <Label htmlFor="comissaoEmpresa">
-                    Comissao Empresa (R$)
-                  </Label>
+                  <Label htmlFor="comissaoEmpresa">Comissão Empresa (R$)</Label>
                   <Input
                     id="comissaoEmpresa"
                     type="number"
@@ -684,9 +703,10 @@ export default function Vendas() {
                     onChange={handleChangeForm}
                   />
                 </div>
+
                 <div>
                   <Label htmlFor="comissaoColaborador">
-                    Comissao Colaborador (R$)
+                    Comissão Colaborador (R$)
                   </Label>
                   <Input
                     id="comissaoColaborador"
@@ -695,8 +715,9 @@ export default function Vendas() {
                     onChange={handleChangeForm}
                   />
                 </div>
+
                 <div>
-                  <Label htmlFor="taxa">Taxa</Label>
+                  <Label htmlFor="taxa">Taxa (%)</Label>
                   <Input
                     id="taxa"
                     type="number"
@@ -713,26 +734,24 @@ export default function Vendas() {
                     onChange={handleChangeForm}
                   />
                 </div>
+
                 <div>
                   <Label htmlFor="ID_SUPERVISOR">Supervisor</Label>
                   <Select
-                    onValueChange={(value) =>
-                      setVenda((prevState) => ({
-                        ...prevState,
-                        ID_SUPERVISOR: value,
-                      }))
+                    onValueChange={(v) =>
+                      setVendaForm((p) => ({ ...p, ID_SUPERVISOR: v }))
                     }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o supervisor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {supervisors.map((supervisor) => (
+                      {supervisors.map((s) => (
                         <SelectItem
-                          key={supervisor.ID_SUPERVISOR}
-                          value={supervisor.ID_SUPERVISOR}
+                          key={s.ID_SUPERVISOR}
+                          value={String(s.ID_SUPERVISOR)}
                         >
-                          {supervisor.ID_SUPERVISOR} - {supervisor.nome}
+                          {s.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -741,59 +760,41 @@ export default function Vendas() {
                 <div>
                   <Label htmlFor="ID_COLABORADOR">Colaborador</Label>
                   <Select
-                    onValueChange={(value) =>
-                      setVenda((prevState) => ({
-                        ...prevState,
-                        ID_COLABORADOR: value,
-                      }))
+                    onValueChange={(v) =>
+                      setVendaForm((p) => ({ ...p, ID_COLABORADOR: v }))
                     }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o colaborador" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      {colaborators.map((colaborator) => (
+                      {colaborators.map((c) => (
                         <SelectItem
-                          key={colaborator.ID_COLABORADOR}
-                          value={colaborator.ID_COLABORADOR}
+                          key={c.ID_COLABORADOR}
+                          value={String(c.ID_COLABORADOR)}
                         >
-                          {colaborator.ID_COLABORADOR} - {colaborator.nome}
+                          {c.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div>
                   <Label htmlFor="banco">Banco</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      setVenda((prevState) => ({ ...prevState, banco: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o banco" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bb">Banco do Brasil</SelectItem>
-                      <SelectItem value="master">Banco Master</SelectItem>
-                      <SelectItem value="facta">Facta</SelectItem>
-                      <SelectItem value="c6">C6</SelectItem>
-                      <SelectItem value="daycoval">Daycoval</SelectItem>
-                      <SelectItem value="pan">Banco Pan</SelectItem>
-                      <SelectItem value="santander">Santander</SelectItem>
-                      <SelectItem value="qualy">Qualy</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="banco"
+                    type="text"
+                    placeholder="Santander"
+                    onChange={handleChangeForm}
+                  />
                 </div>
+
                 <div>
                   <Label htmlFor="linha_venda">Linha</Label>
                   <Select
-                    onValueChange={(value) =>
-                      setVenda((prevState) => ({
-                        ...prevState,
-                        linha_venda: value,
-                      }))
+                    onValueChange={(v) =>
+                      setVendaForm((p) => ({ ...p, linha_venda: v }))
                     }
                   >
                     <SelectTrigger>
@@ -807,6 +808,43 @@ export default function Vendas() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div>
+                  <Label htmlFor="produtoVenda">Produto Venda</Label>
+                  <Select
+                    onValueChange={(v) =>
+                      setVendaForm((p) => ({ ...p, produtoVenda: v }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Novo Consignado">
+                        Novo Consignado
+                      </SelectItem>
+                      <SelectItem value="Renovacao">Renovacao</SelectItem>
+                      <SelectItem value="RMC">Cartao RMC</SelectItem>
+                      <SelectItem value="RCC">Cartao RCC</SelectItem>
+                      <SelectItem value="Portabilidade Consignado">
+                        Portabilidade Consignado
+                      </SelectItem>
+                      <SelectItem value="Credito Pessoal">
+                        Credito Pessoal
+                      </SelectItem>
+                      <SelectItem value="Port+Refin Consignado">
+                        Port+Refin Consignado
+                      </SelectItem>
+                      <SelectItem value="Decimo Terceiro">
+                        Decimo Terceiro
+                      </SelectItem>
+                      <SelectItem value="CLT">CLT</SelectItem>
+                      <SelectItem value="FGTS">FGTS</SelectItem>
+                      <SelectItem value="Consorcio">Consorcio</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div>
                   <Label htmlFor="dataPagamento">Data do Pagamento</Label>
                   <Input
@@ -815,8 +853,9 @@ export default function Vendas() {
                     onChange={handleChangeForm}
                   />
                 </div>
+
                 <div className="flex gap-2 pt-4">
-                  <Button onClick={() => cadastrarVenda()} className="flex-1">
+                  <Button onClick={cadastrarVenda} className="flex-1">
                     Registrar Venda
                   </Button>
                   <Button
@@ -832,74 +871,147 @@ export default function Vendas() {
         </div>
       </div>
 
-      {/* KPIs de Vendas Totais */}
+      {/* CARDS */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        {/* CARD TOTAL DE VENDAS */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Vendas</CardTitle>
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(saleTotal.valorTotalVendas)}
+              {formatCurrency(displayTotals.valorTotalMesAtual)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        {/* CARD QUANTIDADE DE VENDAS */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {saleTotal.quantidadeTotal}
+              {displayTotals.quantidadeTotal}
             </div>
             <p className="text-xs text-muted-foreground">Vendas realizadas</p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Comissões</CardTitle>
+        {/* CARD MAIOR VENDA */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Maior Venda</CardTitle>
+            <Users className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(displayTotals.maiorValorMes)}
+            </div>
+            <p className="text-xs text-muted-foreground">Maior venda registrada</p>
+          </CardContent>
+        </Card>
+
+        {/* CARD MENOR VENDA */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Menor Venda</CardTitle>
+            <Users className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(displayTotals.menorVenda)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Menor venda registrada
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* COMISSAO EMPRESA */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Comissao Empresa
+            </CardTitle>
             <CreditCard className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(saleTotal.comissaoTotal)}
+              {formatCurrency(
+                displayTotals.valorComissaoEmpresa -
+                  (displayTotals.valorComissaoColaboradorClt +
+                    displayTotals.valorComissaoColaboradorMei)
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">Pagas/A pagar</p>
+            <p className="text-xs text-muted-foreground">Total em comissões</p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        {/* COMISSAO COLABORADOR MEI */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Comissao Colaboador MEI
+            </CardTitle>
+            <CreditCard className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(displayTotals.valorComissaoColaboradorMei)}
+            </div>
+            <p className="text-xs text-muted-foreground">Total em comissões</p>
+          </CardContent>
+        </Card>
+
+        {/* COMISSAO COLABORADOR CLT */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Comissao Colaboador CLT
+            </CardTitle>
+            <CreditCard className="h-4 w-4 text-success" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(displayTotals.valorComissaoColaboradorClt)}
+            </div>
+            <p className="text-xs text-muted-foreground">Total em comissões</p>
+          </CardContent>
+        </Card>
+
+        {/* CARD TICKET MEDIO */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
             <Building className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(saleTotal.ticketMedio)}
+              {formatCurrency(displayTotals.ticketMedio)}
             </div>
             <p className="text-xs text-muted-foreground">Por venda</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filtros e Busca */}
-      <Card className="shadow-card">
+      <Card>
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div>
-              <Label htmlFor="search">Buscar</Label>
+              <Label htmlFor="search">
+                Buscar por Cliente, CPF ou Colaborador
+              </Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Cliente, CPF ou colaborador..."
+                  placeholder="Digite para buscar..."
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -914,7 +1026,8 @@ export default function Vendas() {
                 value={dataInicialFilter}
                 onChange={(e) => setDataInicialFilter(e.target.value)}
               />
-
+            </div>
+            <div>
               <Label htmlFor="dataFinal">Data final</Label>
               <Input
                 type="date"
@@ -923,63 +1036,142 @@ export default function Vendas() {
                 onChange={(e) => setDataFinalFilter(e.target.value)}
               />
             </div>
+
+            {/* NOVO: Filtro por Banco */}
             <div>
-              <Label>Colaborador</Label>
-              <Select onValueChange={setColaboradorFilter} value={colaboradorFilter}>
+              <Label>Filtrar por Banco</Label>
+              <Select
+                onValueChange={setBancoFilter}
+                value={bancoFilter}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
+                  <SelectValue placeholder="Todos os bancos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  {colaborators.map((colaborador) => (
-                    <SelectItem
-                      key={colaborador.ID_COLABORADOR}
-                      value={colaborador.ID_COLABORADOR}
-                    >
-                      {colaborador.ID_COLABORADOR} - {colaborador.nome}
+                  <SelectItem value="todos">Todos os Bancos</SelectItem>
+                  {bancosUnicos.map((banco) => (
+                    <SelectItem key={banco} value={banco}>
+                      {banco}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            {/* <div>
-              <Label>Status</Label>
-              <Select onValueChange={setStatusVendaFilter} value={statusVendaFilter}>
+
+            {["ADMIN", "SUPERVISOR"].includes(currentUser.role) && (
+              <div>
+                <Label>Filtrar por Colaborador</Label>
+                <Select
+                  onValueChange={setColaboradorFilter}
+                  value={colaboradorFilter}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">
+                      Todos os Colaboradores
+                    </SelectItem>
+                    {colaborators.map((colaborador) => (
+                      <SelectItem
+                        key={colaborador.ID_COLABORADOR}
+                        value={String(colaborador.ID_COLABORADOR)}
+                      >
+                        {colaborador.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* NOVO: Ordenação por Valor */}
+            <div>
+              <Label>Ordenar por Valor</Label>
+              <Select
+                onValueChange={setOrdenacaoValor}
+                value={ordenacaoValor}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
+                  <SelectValue placeholder="Ordenação padrão" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="concluida">Concluída</SelectItem>
-                  <SelectItem value="processando">Processando</SelectItem>
-                  <SelectItem value="inativa">Inativa</SelectItem>
+                  <SelectItem value="padrao">Padrão</SelectItem>
+                  <SelectItem value="crescente">Crescente ↑</SelectItem>
+                  <SelectItem value="decrescente">Decrescente ↓</SelectItem>
                 </SelectContent>
               </Select>
-            </div> */}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabela de Vendas */}
-      <Card className="shadow-card">
-        <CardHeader>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Lista de Vendas</CardTitle>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="itemsPerPage"
+                className="text-sm text-muted-foreground"
+              >
+                Itens por página:
+              </Label>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(value) => setItemsPerPage(Number(value))}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Mostrando {indexOfFirstItem + 1}-
+              {Math.min(indexOfLastItem, filteredSales.length)} de{" "}
+              {filteredSales.length} vendas
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Valor</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      // Alternar entre ordenações ao clicar no cabeçalho
+                      if (ordenacaoValor === "decrescente") {
+                        setOrdenacaoValor("crescente");
+                      } else if (ordenacaoValor === "crescente") {
+                        setOrdenacaoValor("padrao");
+                      } else {
+                        setOrdenacaoValor("decrescente");
+                      }
+                    }}
+                    className="flex items-center gap-1 p-0 hover:bg-transparent"
+                  >
+                    Valor
+                    <ArrowUpDown className="h-4 w-4" />
+                  </Button>
+                </TableHead>
                 <TableHead>Colaborador</TableHead>
                 <TableHead>Banco</TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Status Cliente</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSales.map((venda) => (
+              {currentSales.map((venda) => (
                 <TableRow key={venda.ID_VENDA}>
                   <TableCell>
                     <div>
@@ -992,7 +1184,7 @@ export default function Vendas() {
                   <TableCell>
                     <div>
                       <p className="font-medium">
-                        R$ {venda.valorLiberado}
+                        {formatCurrency(venda.valorLiberado)}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {venda.dataPagamento}
@@ -1001,7 +1193,7 @@ export default function Vendas() {
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{venda.nomeColaborador}</p>
+                      <p className="font-medium">{venda.colaborador ? venda.colaborador.nome : "Venda do Supervisor"}</p>
                       <p className="text-sm text-muted-foreground">
                         Supervisor: {venda.nomeSupervisor}
                       </p>
@@ -1010,8 +1202,8 @@ export default function Vendas() {
                   <TableCell>{venda.banco}</TableCell>
                   <TableCell>{venda.dataPagamento}</TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(venda.cliente?.status)}>
-                      {venda.cliente?.status}
+                    <Badge className={getStatusColor(venda.statusCliente)}>
+                      {venda.cliente?.status ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -1021,9 +1213,15 @@ export default function Vendas() {
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm" onClick={() => deleteSale(venda)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {["ADMIN", "SUPERVISOR"].includes(currentUser.role) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteSale(venda)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1031,13 +1229,68 @@ export default function Vendas() {
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell className="font-semibold text-lg" colSpan={1}>
-                  Totais
+                <TableCell colSpan={7}>
+                  {/* Controles de paginação */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Página {currentPage} de {totalPages}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {/* Botão anterior */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={prevPage}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+
+                      {/* Números de página */}
+                      {getPageNumbers().map((pageNumber) => (
+                        <Button
+                          key={pageNumber}
+                          variant={
+                            currentPage === pageNumber ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={() => goToPage(pageNumber)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNumber}
+                        </Button>
+                      ))}
+
+                      {/* Botão próximo */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={nextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </TableCell>
-                <TableCell className="font-semibold text-lg text-left" colSpan={2}>
-                  {formatCurrency(filteredSaleTotals.valorTotalVendas)}
+              </TableRow>
+
+              {/* Linha de totais */}
+              <TableRow>
+                <TableCell className="font-semibold text-lg" colSpan={2}>
+                  Totais (Filtro Atual)
                 </TableCell>
-                <TableCell className="font-semibold text-lg text-left">
+                <TableCell
+                  className="font-semibold text-lg text-left"
+                  colSpan={2}
+                >
+                  {formatCurrency(filteredSaleTotals.valorTotalMesAtual)}
+                </TableCell>
+                <TableCell
+                  className="font-semibold text-lg text-left"
+                  colSpan={3}
+                >
                   {filteredSaleTotals.quantidadeTotal} vendas
                 </TableCell>
               </TableRow>

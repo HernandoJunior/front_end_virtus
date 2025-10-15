@@ -15,7 +15,9 @@ import {
   Edit,
   Trash2,
   Filter,
-  Search
+  Search,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import {
   Dialog,
@@ -63,6 +65,10 @@ export default function Metas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [tipoFilter, setTipoFilter] = useState("todos");
+
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [editingMeta, setEditingMeta] = useState<Meta | null>(null);
 
@@ -132,7 +138,7 @@ export default function Metas() {
   async function atualizarMeta() {
     if (!editingMeta) return;
 
-  const payload = {
+    const payload = {
       metaDescricao: editingMeta.metaDescricao,
       valorMeta: editingMeta.valorMeta,
       tipoDaMeta: editingMeta.tipoDaMeta,
@@ -141,7 +147,7 @@ export default function Metas() {
       dataInicio: editingMeta.dataInicio,
       dataFinal: editingMeta.dataFinal,
       statusMeta: editingMeta.statusMeta,
-  };
+    };
 
     try {
       await api.put(`/metas/${editingMeta.id}`, payload);
@@ -195,6 +201,53 @@ export default function Metas() {
     return matchesSearch && matchesStatus && matchesTipo;
   });
 
+  // Lógica de paginação
+  const totalPages = Math.ceil(filteredMetas.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentMetas = filteredMetas.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Reset para página 1 quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, tipoFilter, filteredMetas.length]);
+
+  // Funções de navegação
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToPage = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Gerar números de página para exibição
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return pageNumbers;
+  };
+
   const totalRealizado = filteredMetas.reduce((acc, meta) => acc + meta.valorRealizado, 0);
   const totalMeta = filteredMetas.reduce((acc, meta) => acc + meta.valorMeta, 0);
   const realizacaoMedia = totalMeta > 0 ? (totalRealizado / totalMeta) * 100 : 0;
@@ -205,7 +258,7 @@ export default function Metas() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Metas</h1>
           <p className="text-muted-foreground">
-            Gerencie e acompanhe o desempenho das metas de vendas
+            Gerencie e acompanhe o desempenho das metas de comissão
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -218,40 +271,69 @@ export default function Metas() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Criar Nova Meta</DialogTitle>
+              <DialogDescription>
+                Meta baseada em comissão recebida (não em valor de vendas)
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <Input id="metaDescricao" placeholder="Nome da Meta (Ex: Meta Mensal Janeiro)" onChange={handleChange} value={formData.metaDescricao} />
-              <Input id="valorMeta" type="number" placeholder="Valor da Meta (Ex: 850000)" onChange={handleChange} value={formData.valorMeta} />
-              <div className="grid grid-cols-2 gap-4">
-                <Input id="dataInicio" type="date" onChange={handleChange} value={formData.dataInicio} />
-                <Input id="dataFinal" type="date" onChange={handleChange} value={formData.dataFinal} />
+              <div>
+                <Label htmlFor="metaDescricao">Nome da Meta</Label>
+                <Input id="metaDescricao" placeholder="Ex: Meta Mensal Janeiro" onChange={handleChange} value={formData.metaDescricao} />
               </div>
-              <Select onValueChange={(value) => setFormData((prevState) => ({ ...prevState, tipoDaMeta: value, idColaborador: null, idSupervisor: null }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o tipo da meta" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                  <SelectItem value="EQUIPE">Equipe</SelectItem>
-                </SelectContent>
-              </Select>
+              <div>
+                <Label htmlFor="valorMeta">Valor da Meta de Comissão (R$)</Label>
+                <Input id="valorMeta" type="number" placeholder="Ex: 50000" onChange={handleChange} value={formData.valorMeta} />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Para colaboradores: 27% (CLT) ou 35% (MEI) da comissão
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="dataInicio">Data Início</Label>
+                  <Input id="dataInicio" type="date" onChange={handleChange} value={formData.dataInicio} />
+                </div>
+                <div>
+                  <Label htmlFor="dataFinal">Data Fim</Label>
+                  <Input id="dataFinal" type="date" onChange={handleChange} value={formData.dataFinal} />
+                </div>
+              </div>
+              <div>
+                <Label>Tipo da Meta</Label>
+                <Select onValueChange={(value) => setFormData((prevState) => ({ ...prevState, tipoDaMeta: value, idColaborador: null, idSupervisor: null }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o tipo da meta" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INDIVIDUAL">Individual (Colaborador)</SelectItem>
+                    <SelectItem value="EQUIPE">Equipe (Supervisor)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {formData.tipoDaMeta === 'INDIVIDUAL' && (
-                <Select onValueChange={(value) => setFormData((prevState) => ({ ...prevState, idColaborador: Number(value) }))}>
+                <div>
+                  <Label>Colaborador</Label>
+                  <Select onValueChange={(value) => setFormData((prevState) => ({ ...prevState, idColaborador: Number(value) }))}>
                     <SelectTrigger><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
                     <SelectContent>
-                        {listColaboradores.map((col: any) => (
-                            <SelectItem key={col.ID_COLABORADOR} value={String(col.ID_COLABORADOR)}>{col.nome}</SelectItem>
-                        ))}
+                      {listColaboradores.map((col: any) => (
+                        <SelectItem key={col.ID_COLABORADOR} value={String(col.ID_COLABORADOR)}>
+                          {col.nome} ({col.regimeContratacao ? 'MEI - 35%' : 'CLT - 27%'})
+                        </SelectItem>
+                      ))}
                     </SelectContent>
-                </Select>
+                  </Select>
+                </div>
               )}
               {formData.tipoDaMeta === 'EQUIPE' && (
-                <Select onValueChange={(value) => setFormData((prevState) => ({ ...prevState, idSupervisor: Number(value) }))}>
+                <div>
+                  <Label>Supervisor</Label>
+                  <Select onValueChange={(value) => setFormData((prevState) => ({ ...prevState, idSupervisor: Number(value) }))}>
                     <SelectTrigger><SelectValue placeholder="Selecione o supervisor" /></SelectTrigger>
                     <SelectContent>
-                        {listSupervisores.map((sup: any) => (
-                            <SelectItem key={sup.ID_SUPERVISOR} value={String(sup.ID_SUPERVISOR)}>{sup.nome}</SelectItem>
-                        ))}
+                      {listSupervisores.map((sup: any) => (
+                        <SelectItem key={sup.ID_SUPERVISOR} value={String(sup.ID_SUPERVISOR)}>{sup.nome}</SelectItem>
+                      ))}
                     </SelectContent>
-                </Select>
+                  </Select>
+                </div>
               )}
               <div className="flex gap-2 pt-4">
                 <Button onClick={criarMeta} className="flex-1">Criar Meta</Button>
@@ -267,7 +349,7 @@ export default function Metas() {
           <CardTitle className="flex items-center gap-2"><Filter className="h-4 w-4" /> Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar metas..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -287,6 +369,15 @@ export default function Metas() {
                 <SelectItem value="todos">Todos Tipos</SelectItem>
                 <SelectItem value="INDIVIDUAL">Individual</SelectItem>
                 <SelectItem value="EQUIPE">Equipe</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+              <SelectTrigger><SelectValue placeholder="Itens por página" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 por página</SelectItem>
+                <SelectItem value="10">10 por página</SelectItem>
+                <SelectItem value="20">20 por página</SelectItem>
+                <SelectItem value="50">50 por página</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("todos"); setTipoFilter("todos"); }}>
@@ -324,13 +415,13 @@ export default function Metas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">R$ {totalRealizado.toLocaleString('pt-BR')}</div>
-            <p className="text-xs text-muted-foreground">No período ativo</p>
+            <p className="text-xs text-muted-foreground">Comissão no período</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="space-y-4">
-        {filteredMetas.map((meta) => (
+        {currentMetas.map((meta) => (
           <Card key={meta.id} className="shadow-card p-4">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -354,11 +445,11 @@ export default function Metas() {
                 <p className="font-medium">{new Date(meta.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')} a {new Date(meta.dataFinal + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Meta</p>
+                <p className="text-muted-foreground">Meta de Comissão</p>
                 <p className="font-medium">R$ {meta.valorMeta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Realizado</p>
+                <p className="text-muted-foreground">Comissão Realizada</p>
                 <p className="font-medium text-success">R$ {meta.valorRealizado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
@@ -374,10 +465,46 @@ export default function Metas() {
         ))}
       </div>
 
+      {/* Paginação */}
+      {filteredMetas.length > 0 && (
+        <Card className="shadow-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredMetas.length)} de {filteredMetas.length} metas
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" onClick={prevPage} disabled={currentPage === 1}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {getPageNumbers().map((pageNumber) => (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(pageNumber)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNumber}
+                  </Button>
+                ))}
+
+                <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage === totalPages}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Meta</DialogTitle>
+            <DialogDescription>Meta baseada em comissão</DialogDescription>
           </DialogHeader>
           {editingMeta && (
             <div className="space-y-4 py-4">
@@ -390,7 +517,7 @@ export default function Metas() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-valorMeta">Valor da Meta (R$)</Label>
+                <Label htmlFor="edit-valorMeta">Valor da Meta de Comissão (R$)</Label>
                 <Input
                   id="edit-valorMeta"
                   type="number"
@@ -419,8 +546,8 @@ export default function Metas() {
                 </div>
               </div>
               <div className="p-3 bg-muted rounded-lg text-sm">
-                  <p><strong>Tipo:</strong> {editingMeta.tipoDaMeta}</p>
-                  <p><strong>Responsável:</strong> {editingMeta.responsavelNome}</p>
+                <p><strong>Tipo:</strong> {editingMeta.tipoDaMeta}</p>
+                <p><strong>Responsável:</strong> {editingMeta.responsavelNome}</p>
               </div>
               <div>
                 <Label>Status</Label>
@@ -442,6 +569,9 @@ export default function Metas() {
                   <Progress value={editingMeta.progresso} />
                   <p className="text-center text-sm font-medium">
                     {editingMeta.progresso.toFixed(1)}% concluído
+                  </p>
+                  <p className="text-center text-xs text-muted-foreground">
+                    R$ {editingMeta.valorRealizado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de R$ {editingMeta.valorMeta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>

@@ -306,11 +306,6 @@ export default function ClienteDetalhes() {
                                 <Edit className="h-4 w-4 mr-2" /> Editar
                             </Button>
                             <Button variant="outline" asChild>
-                                <Link to={`/clientes/${clienteId}/propostas`}>
-                                    <FileText className="h-4 w-4 mr-2" /> Propostas
-                                </Link>
-                            </Button>
-                            <Button variant="outline" asChild>
                                 <Link to="/clientes">Voltar</Link>
                             </Button>
                         </>
@@ -327,7 +322,7 @@ export default function ClienteDetalhes() {
                 <CardContent className="space-y-6">
 
                     {/* ## CAMPOS RENDERIZADOS CONDICIONALMENTE ## */}
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-3">
                         <div className="space-y-4">
                             <h3 className="text-lg font-semibold text-foreground border-b pb-2">Identificação</h3>
                             <div className="space-y-3">
@@ -338,7 +333,7 @@ export default function ClienteDetalhes() {
                                 {renderField("Nome", "nome", cliente.nome)}
                               <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Colaborador</span>
-                                <span className="font-medium">{cliente.nomeColaborador}</span>
+                                <span className="font-medium">{cliente.colaborador ? cliente.colaborador.nome : "Colaborador nao vinculado"}</span>
                               </div>
                             <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Status do Cliente</span>
@@ -359,6 +354,9 @@ export default function ClienteDetalhes() {
                                 {renderField("Margem Total", "margem_total", cliente.margem_total)}
                                 {renderField("Margem", "margem", cliente.margem)}
                                 {renderField("Valor Liberado", "valor_liberado", cliente.valorliberado)}
+                                {renderField("Agencia", "agencia", cliente.agencia)}
+                                {renderField("Conta", "conta", cliente.conta)}
+                                {renderField("Banco", "banco", cliente.banco)}
                             </div>
                         </div>
 
@@ -376,6 +374,14 @@ export default function ClienteDetalhes() {
                                 {renderField("Perfil do cliente", "status_cliente", cliente.status_cliente, "status_cliente")}
                             </div>
                         </div>
+
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-foreground border-b pb-2">Informaçoes adicionais</h3>
+                            <div className="space-y-3">
+                                {renderField("Endereço", "endereco", cliente.endereço, "text")}
+                            </div>
+                        </div>
+
                     </div>
                 </CardContent>
             </Card>
