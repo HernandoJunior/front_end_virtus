@@ -29,11 +29,12 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      # --- ALTERAÇÃO AQUI ---
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: ./dist # Aponte para a pasta de build
 
   deploy:
     runs-on: ubuntu-latest
@@ -62,4 +63,3 @@ jobs:
           app-name: 'virtuswebcrm'
           slot-name: 'Production'
           package: .
-          
