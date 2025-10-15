@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
 
@@ -28,7 +28,7 @@ jobs:
           npm install
           npm run build --if-present
           npm run test --if-present
-      
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -51,13 +51,13 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_BBE4755C6D29468AB1BAC15BF92E6220 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_10B0194601B44670A0A4D2FBBBE37692 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_49AE3AEE740842BAA2A6D0E5934DCE5F }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F20F515A63BB4745872E2F78F1C12A06 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_67D648809190438BB271729DF10B94F8 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3118714FB5694FC681E8354CEC4EB5C8 }}
 
       - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
         with:
           app-name: 'virtuswebcrm'
           slot-name: 'Production'
