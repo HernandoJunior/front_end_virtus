@@ -21,6 +21,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.x'
+
+      - name: Create .env.production file
+        run: echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > .env.production
       
       - name: npm install and build
         run: |
@@ -70,4 +73,5 @@ jobs:
         with:
           app-name: 'virtuswebcrm'
           slot-name: 'Production'
+
           package: .
