@@ -12,19 +12,6 @@ export const api = axios.create({
   withCredentials: true, // Importante para CORS com cookies/credenciais
 });
 
-// Interceptor para adicionar o token JWT em todas as requisições
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // Interceptor para tratamento de erros globais
 api.interceptors.response.use(
