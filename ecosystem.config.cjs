@@ -1,10 +1,12 @@
 module.exports = {
   apps: [{
-    name: 'virtuswebcrm',
-    script: 'serve',   
-    args: '-s .',     
+    name: "virtuswebcrm",
+    script: "serve",
     env: {
-      NODE_ENV: 'production'
+      PM2_SERVE_PATH: './dist',
+      PM2_SERVE_PORT: process.env.PORT || 8080,
+      PM2_SERVE_SPA: 'true',
+      PM2_SERVE_HOMEPAGE: '/index.html'
     }
   }]
 };
