@@ -2,9 +2,10 @@
   "name": "virtuswebcrm-deploy",
   "version": "1.0.0",
   "scripts": {
-    "start": "serve -s ."
+    "start": "pm2-runtime start ecosystem.config.cjs"
   },
   "dependencies": {
-    "serve": "^14.2.3"
+    "pm2": "^5.3.0",
+    "serve": "^14.2.1"
   }
 }
