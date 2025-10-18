@@ -10,4 +10,4 @@ module.exports = {
       VITE_API_URL: process.env.VITE_API_URL || 'https://my-spring-api.azurewebsites.net'
     }
   }]
-};
+}
