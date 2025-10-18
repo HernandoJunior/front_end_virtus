@@ -2,6 +2,7 @@
   "name": "virtuswebcrm-deploy",
   "version": "1.0.0",
   "scripts": {
+    "prestart": "node generate-config.js",
     "start": "pm2-runtime start ecosystem.config.cjs"
   },
   "dependencies": {
