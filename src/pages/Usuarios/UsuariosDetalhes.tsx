@@ -21,7 +21,6 @@ export default function UsuarioDetalhes() {
     const [listColaboratorsAtSupervisors, setListColaboratorsAtSupervisors] = useState([]);
 
     useEffect(() => {
-        console.log("ROLE E ID: ", role, id)
         async function fetchUsuario() {
             if (!role || !id) return;
             

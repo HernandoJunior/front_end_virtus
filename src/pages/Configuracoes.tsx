@@ -59,7 +59,6 @@ export default function Configuracoes() {
 
   const handleSave = () => {
     // Implementar salvamento das configurações
-    console.log("Configurações salvas:", configuracoes);
   };
 
   return (

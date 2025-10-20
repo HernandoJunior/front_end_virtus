@@ -114,7 +114,6 @@ export default function Vendas() {
   // Efeito para buscar dados do usuário logado do localStorage
   useEffect(() => {
     const userDataString = localStorage.getItem("@virtus:user");
-    console.log(userDataString)
     if (userDataString) {
       const userData = JSON.parse(userDataString);
       setCurrentUser({ role: userData.role, id: userData.id });
@@ -506,7 +505,6 @@ export default function Vendas() {
       alert(
         "Erro ao cadastrar venda. Verifique os dados"
       );
-      console.log(error);
     }
   }
 
@@ -529,7 +527,6 @@ export default function Vendas() {
       );
     } catch (error) {
       alert("Erro ao deletar venda!");
-      console.log(error);
     }
   }
 
@@ -543,8 +540,6 @@ export default function Vendas() {
         return "bg-secondary text-secondary-foreground";
     }
   };
-
-  console.log(currentUser)
 
   return (
     <div className="space-y-6">

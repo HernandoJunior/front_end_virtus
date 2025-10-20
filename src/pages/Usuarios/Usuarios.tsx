@@ -590,8 +590,7 @@ export default function Usuarios() {
               {filteredUsers.map((usuario) => {
                 const role = usuario.role;
                 const user = usuario;
-                console.log(usuario);
-
+                
                 return (
                   <TableRow key={usuario.email}>
                     <TableCell>

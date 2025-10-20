@@ -96,7 +96,6 @@ export default function SupervisorCarteira() {
 
   const colaboradoresComStats = useMemo(() => {
     if (!carteira) return [];
-    console.log(carteira)
     return carteira.colaboradores.map((colab: any) => {
       const clientesDoColaborador = allClients.filter(
         (c) => c.colaborador && c.colaborador.ID_COLABORADOR === colab.id
@@ -147,7 +146,6 @@ export default function SupervisorCarteira() {
     return acumulador + count.clientesInativos
 }, 0)
 
-console.log()
 
   return (
     <div className="space-y-6">

@@ -40,7 +40,6 @@ export default function vendaDetalhes() {
           userData = response.data;
           setVenda(userData);
           setFormData(userData);
-          console.log(response.data);
         }
       } catch (error) {
         console.error("Venda não encontrada.");
@@ -73,7 +72,6 @@ export default function vendaDetalhes() {
     try {
       await api.put(`/vendas/atualizarVenda/${venda.ID_VENDA}`, formData);
       setVenda(formData);
-      console.log(formData);
       setIsEditing(false);
       alert("Venda atualizada com sucesso!");
     } catch (error) {
