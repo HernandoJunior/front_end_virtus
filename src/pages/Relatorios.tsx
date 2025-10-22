@@ -38,15 +38,14 @@ interface RelatorioCompleto {
   kpis: {
     totalVendas: number;
     qtdVendas: number;
-    metaAtingidaPercentual: number;
     ticketMedio: number;
+    totalComissoes: number;
   };
   vendasPorPeriodo: {
     periodo: string;
     qtdVendas: number;
     valorTotal: number;
-    valorMeta: number;
-    atingimentoPercentual: number;
+    totalComissoes: number;
   }[];
   comissoes: {
     responsavelNome: string;
@@ -161,18 +160,71 @@ export default function Relatorios() {
 
         <TabsContent value="vendas" className="space-y-6 mt-4">
             <div className="grid gap-4 md:grid-cols-4">
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total de Vendas</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(kpis.totalVendas)}</div></CardContent></Card>
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{kpis.qtdVendas}</div></CardContent></Card>
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta Atingida</CardTitle><Target className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-success">{kpis.metaAtingidaPercentual.toFixed(1)}%</div></CardContent></Card>
-                <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ticket Médio</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(kpis.ticketMedio)}</div></CardContent></Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(kpis.totalVendas)}</div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{kpis.qtdVendas}</div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Comissões</CardTitle>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-success">{formatCurrency(kpis.totalComissoes)}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Comissões do período</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(kpis.ticketMedio)}</div>
+                  </CardContent>
+                </Card>
             </div>
+            
             <Card>
                 <CardHeader><CardTitle>Vendas por Período</CardTitle></CardHeader>
                 <CardContent>
                     <Table>
-                        <TableHeader><TableRow><TableHead>Período</TableHead><TableHead>Qtd. Vendas</TableHead><TableHead>Valor Total</TableHead><TableHead>Meta</TableHead><TableHead>Atingimento</TableHead></TableRow></TableHeader>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Período</TableHead>
+                            <TableHead>Qtd. Vendas</TableHead>
+                            <TableHead>Valor Total</TableHead>
+                            <TableHead>Total Comissões</TableHead>
+                          </TableRow>
+                        </TableHeader>
                         <TableBody>
-                            {vendasPorPeriodo.map(item => (<TableRow key={item.periodo}><TableCell className="font-medium">{item.periodo}</TableCell><TableCell>{item.qtdVendas}</TableCell><TableCell>{formatCurrency(item.valorTotal)}</TableCell><TableCell>{formatCurrency(item.valorMeta)}</TableCell><TableCell className={`font-bold ${item.atingimentoPercentual >= 100 ? 'text-success' : 'text-warning'}`}>{item.atingimentoPercentual.toFixed(1)}%</TableCell></TableRow>))}
+                            {vendasPorPeriodo.map(item => (
+                              <TableRow key={item.periodo}>
+                                <TableCell className="font-medium">{item.periodo}</TableCell>
+                                <TableCell>{item.qtdVendas}</TableCell>
+                                <TableCell>{formatCurrency(item.valorTotal)}</TableCell>
+                                <TableCell className="font-bold text-success">
+                                  {formatCurrency(item.totalComissoes)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -184,9 +236,23 @@ export default function Relatorios() {
             <CardHeader><CardTitle>Comissões por Responsável</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader><TableRow><TableHead>Responsável</TableHead><TableHead>Qtd. Vendas</TableHead><TableHead>Total Comissionado</TableHead></TableRow></TableHeader>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Responsável</TableHead>
+                    <TableHead>Qtd. Vendas</TableHead>
+                    <TableHead>Total Comissionado</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
-                  {comissoes.map(item => (<TableRow key={item.responsavelNome}><TableCell className="font-medium">{item.responsavelNome}</TableCell><TableCell>{item.qtdVendas}</TableCell><TableCell className="text-success font-bold">{formatCurrency(item.totalComissionado)}</TableCell></TableRow>))}
+                  {comissoes.map(item => (
+                    <TableRow key={item.responsavelNome}>
+                      <TableCell className="font-medium">{item.responsavelNome}</TableCell>
+                      <TableCell>{item.qtdVendas}</TableCell>
+                      <TableCell className="text-success font-bold">
+                        {formatCurrency(item.totalComissionado)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -198,9 +264,28 @@ export default function Relatorios() {
             <CardHeader><CardTitle>Performance por Banco</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader><TableRow><TableHead>Banco</TableHead><TableHead>Qtd. Vendas</TableHead><TableHead>Valor Total</TableHead><TableHead>Participação (%)</TableHead></TableRow></TableHeader>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Banco</TableHead>
+                    <TableHead>Qtd. Vendas</TableHead>
+                    <TableHead>Valor Total</TableHead>
+                    <TableHead>Participação (%)</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
-                  {vendasPorBanco.map(item => (<TableRow key={item.banco}><TableCell className="font-medium">{item.banco}</TableCell><TableCell>{item.qtdVendas}</TableCell><TableCell>{formatCurrency(item.valorTotal)}</TableCell><TableCell><div className="flex items-center gap-2"><span>{item.percentual.toFixed(1)}%</span><Progress value={item.percentual} className="h-2 w-24" /></div></TableCell></TableRow>))}
+                  {vendasPorBanco.map(item => (
+                    <TableRow key={item.banco}>
+                      <TableCell className="font-medium">{item.banco}</TableCell>
+                      <TableCell>{item.qtdVendas}</TableCell>
+                      <TableCell>{formatCurrency(item.valorTotal)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{item.percentual.toFixed(1)}%</span>
+                          <Progress value={item.percentual} className="h-2 w-24" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -211,11 +296,50 @@ export default function Relatorios() {
           <Card>
             <CardHeader><CardTitle>Funil de Conversão do Período</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-                <div><div className="flex justify-between text-sm mb-1"><span>Propostas Criadas</span><span className="font-bold">{funil.propostasCriadas}</span></div><Progress value={100} /></div>
-                <div><div className="flex justify-between text-sm mb-1"><span>Em Análise</span><span className="font-bold">{funil.propostasEmAnalise}</span></div><Progress value={(funil.propostasEmAnalise / totalFunil) * 100} /></div>
-                <div><div className="flex justify-between text-sm mb-1"><span>Aprovadas</span><span className="font-bold">{funil.propostasAprovadas}</span></div><Progress value={(funil.propostasAprovadas / totalFunil) * 100} className="[&>*]:bg-success" /></div>
-                <div><div className="flex justify-between text-sm mb-1"><span>Recusadas</span><span className="font-bold">{funil.propostasRecusadas}</span></div><Progress value={(funil.propostasRecusadas / totalFunil) * 100} className="[&>*]:bg-destructive" /></div>
-                <div className="pt-4 border-t"><div className="flex justify-between font-semibold"><span>Taxa de Conversão</span><span className="text-success">{funil.taxaDeConversao.toFixed(1)}%</span></div></div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Propostas Criadas</span>
+                    <span className="font-bold">{funil.propostasCriadas}</span>
+                  </div>
+                  <Progress value={100} />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Em Análise</span>
+                    <span className="font-bold">{funil.propostasEmAnalise}</span>
+                  </div>
+                  <Progress value={(funil.propostasEmAnalise / totalFunil) * 100} />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Aprovadas</span>
+                    <span className="font-bold">{funil.propostasAprovadas}</span>
+                  </div>
+                  <Progress 
+                    value={(funil.propostasAprovadas / totalFunil) * 100} 
+                    className="[&>*]:bg-success" 
+                  />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Recusadas</span>
+                    <span className="font-bold">{funil.propostasRecusadas}</span>
+                  </div>
+                  <Progress 
+                    value={(funil.propostasRecusadas / totalFunil) * 100} 
+                    className="[&>*]:bg-destructive" 
+                  />
+                </div>
+                
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between font-semibold">
+                    <span>Taxa de Conversão</span>
+                    <span className="text-success">{funil.taxaDeConversao.toFixed(1)}%</span>
+                  </div>
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
