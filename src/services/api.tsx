@@ -34,6 +34,6 @@ api.interceptors.response.use(
 );
 
 // Log para debug (remover em produção se necessário)
-// console.log('🔗 API conectada em:', baseURL);
+console.log('🔗 API conectada em:', baseURL);
 
 export default api;

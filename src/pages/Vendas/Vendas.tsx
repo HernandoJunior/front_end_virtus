@@ -71,15 +71,12 @@ export default function Vendas() {
     nomeCliente: "",
   });
 
-  // Estado para o usuário logado
   const [currentUser, setCurrentUser] = useState({ role: null, id: null });
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [listVendas, setListVendas] = useState([]);
   const [saleTotal, setSaleTotal] = useState({
@@ -94,24 +91,17 @@ export default function Vendas() {
     ticketMedio: 0,
   });
 
-  // Filtros da UI
   const [colaboradorFilter, setColaboradorFilter] = useState("todos");
   const [dataInicialFilter, setDataInicialFilter] = useState("");
   const [dataFinalFilter, setDataFinalFilter] = useState("");
-  
-  // NOVOS FILTROS ADICIONADOS
-  const [ordenacaoValor, setOrdenacaoValor] = useState(""); // "crescente", "decrescente", ""
+  const [ordenacaoValor, setOrdenacaoValor] = useState("");
   const [bancoFilter, setBancoFilter] = useState("todos");
-
-  // Estados para paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
   const [colaborators, setColaborators] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
   const [exportType, setExportType] = useState("");
 
-  // Efeito para buscar dados do usuário logado do localStorage
   useEffect(() => {
     const userDataString = localStorage.getItem("@virtus:user");
     if (userDataString) {
@@ -120,7 +110,6 @@ export default function Vendas() {
     }
   }, []);
 
-  // Efeito para buscar dados iniciais (vendas, colaboradores, supervisores, KPIs)
   useEffect(() => {
     const fetchUserVendas = async () => {
       try {
@@ -138,10 +127,7 @@ export default function Vendas() {
           const req = await api.get("/vendas/mes");
           setSaleTotal(req.data);
         } catch (error) {
-          console.error(
-            "Nao foi possivel carregar os totais de vendas:",
-            error
-          );
+          console.error("Nao foi possivel carregar os totais de vendas:", error);
         }
       }
     };
@@ -164,107 +150,68 @@ export default function Vendas() {
     fetchSelectOptions();
   }, [currentUser]);
 
-  // Extrair bancos únicos para o filtro (com tratamento para valores nulos/vazios)
   const bancosUnicos = [...new Set(listVendas
     .map(venda => venda.banco)
     .filter(banco => banco && banco.trim() !== "")
   )];
 
-  // Lógica de filtragem e cálculo de totais NO FRONTEND
   const filteredSales = listVendas
     .filter((venda) => {
       const searchTermLower = searchTerm.toLowerCase();
-
-      const matchSearch =
-        searchTerm === "" ||
-        (venda.nomeCliente &&
-          venda.nomeCliente.toLowerCase().includes(searchTermLower)) ||
+      const matchSearch = searchTerm === "" ||
+        (venda.nomeCliente && venda.nomeCliente.toLowerCase().includes(searchTermLower)) ||
         (venda.cpfCliente && venda.cpfCliente.includes(searchTerm)) ||
-        (venda.nomeColaborador &&
-          venda.nomeColaborador.toLowerCase().includes(searchTermLower));
+        (venda.nomeColaborador && venda.nomeColaborador.toLowerCase().includes(searchTermLower));
 
-      const matchColaborador =
-        colaboradorFilter === "todos" ||
-        venda.ID_COLABORADOR == colaboradorFilter;
+      const matchColaborador = colaboradorFilter === "todos" || venda.ID_COLABORADOR == colaboradorFilter;
+      const matchBanco = bancoFilter === "todos" || venda.banco === bancoFilter;
+      const matchDataInicial = !dataInicialFilter ||
+        new Date(venda.dataPagamento).setHours(0, 0, 0, 0) >= new Date(dataInicialFilter).setHours(0, 0, 0, 0);
+      const matchDataFinal = !dataFinalFilter ||
+        new Date(venda.dataPagamento).setHours(0, 0, 0, 0) <= new Date(dataFinalFilter).setHours(0, 0, 0, 0);
 
-      // NOVO: Filtro por banco
-      const matchBanco =
-        bancoFilter === "todos" || venda.banco === bancoFilter;
-
-      // Adiciona a lógica para ignorar o time da data, tratando apenas o dia
-      const matchDataInicial =
-        !dataInicialFilter ||
-        new Date(venda.dataPagamento).setHours(0, 0, 0, 0) >=
-          new Date(dataInicialFilter).setHours(0, 0, 0, 0);
-      const matchDataFinal =
-        !dataFinalFilter ||
-        new Date(venda.dataPagamento).setHours(0, 0, 0, 0) <=
-          new Date(dataFinalFilter).setHours(0, 0, 0, 0);
-
-      // Se for USER, o filtro de colaborador não se aplica na UI, pois a lista da API já vem filtrada
       if (currentUser.role === "USER") {
         return matchSearch && matchDataInicial && matchDataFinal && matchBanco;
       }
 
-      return (
-        matchSearch && matchColaborador && matchDataInicial && matchDataFinal && matchBanco
-      );
+      return matchSearch && matchColaborador && matchDataInicial && matchDataFinal && matchBanco;
     })
-    // NOVO: Ordenação por valor
     .sort((a, b) => {
       if (ordenacaoValor === "crescente") {
         return (a.valorLiberado || 0) - (b.valorLiberado || 0);
       } else if (ordenacaoValor === "decrescente") {
         return (b.valorLiberado || 0) - (a.valorLiberado || 0);
       }
-      return 0; // Sem ordenação
+      return 0;
     });
 
-  // Lógica de paginação
   const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Reset para página 1 quando filtros mudarem
   useEffect(() => {
     setCurrentPage(1);
-  }, [
-    searchTerm,
-    colaboradorFilter,
-    dataInicialFilter,
-    dataFinalFilter,
-    bancoFilter,
-    ordenacaoValor,
-    filteredSales.length,
-  ]);
+  }, [searchTerm, colaboradorFilter, dataInicialFilter, dataFinalFilter, bancoFilter, ordenacaoValor, filteredSales.length]);
 
-  // Funções de navegação
   const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
 
   const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
   const goToPage = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
 
-  // Gerar números de página para exibição
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
-
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-    // Ajustar startPage se endPage estiver no limite
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
@@ -277,37 +224,29 @@ export default function Vendas() {
   };
 
   const filteredSaleTotals = (() => {
-    const valorTotal = filteredSales.reduce(
-      (acc, v) => acc + (v.valorLiberado || 0),
-      0
-    );
-
-    const maiorValor = filteredSales.reduce(
-      (acc, v) => Math.max(acc, v.valorLiberado || 0),
-      0
-    );
-
-    const menorValor = filteredSales.reduce(
-      (acc, v) => {
-        const valor = v.valorLiberado;
-        return valor > 0 ? Math.min(acc, valor) : acc;
+    const valorTotal = filteredSales.reduce((acc, v) => acc + (v.valorLiberado || 0), 0);
+    const maiorValor = filteredSales.reduce((acc, v) => Math.max(acc, v.valorLiberado || 0), 0);
+    const menorValor = filteredSales.reduce((acc, v) => {
+      const valor = v.valorLiberado;
+      return valor > 0 ? Math.min(acc, valor) : acc;
     }, Infinity);
 
     const quantidadeTotal = filteredSales.length;
+    const comissaoEmpresa = filteredSales.reduce((acc, v) => acc + (v.comissaoEmpresa || 0), 0);
 
-    const comissaoEmpresa = filteredSales.reduce(
-      (acc, v) => acc + (v.comissaoEmpresa || 0),
-      0
-    );
+    const comissaoColaboradorClt = filteredSales.reduce((acc, v) => {
+      if (v.colaborador?.regimeContratacao === "CLT") {
+        return acc + (v.comissaoColaborador || 0);
+      }
+      return acc;
+    }, 0);
 
-    let comissaoColaborador = filteredSales.reduce(
-      (acc, v) => acc + (v.comissaoColaborador || 0),
-      0
-    );
-
-    const comissaoColaboradorClt = comissaoColaborador * (27 / 100);
-
-    const comissaoColaboradorMei = comissaoColaborador * (35 / 100);
+    const comissaoColaboradorMei = filteredSales.reduce((acc, v) => {
+      if (v.colaborador?.regimeContratacao === "MEI") {
+        return acc + (v.comissaoColaborador || 0);
+      }
+      return acc;
+    }, 0);
 
     const ticketMedio = quantidadeTotal > 0 ? valorTotal / quantidadeTotal : 0;
 
@@ -327,111 +266,21 @@ export default function Vendas() {
 
   const downloadPDF = () => {
     const dataToExport = filteredSales;
-    const doc = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    });
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     autoTable(doc, {
-      head: [
-        [
-          "ID",
-          "Banco",
-          "Linha",
-          "Produto Venda",
-          "Agente",
-          "Cidade",
-          "Valor Liberado",
-          "Prazo",
-          "Taxa",
-          "Comissao Empresa",
-          "Comissao Agente",
-          "Promotora",
-          "Data Pagamento",
-          "Cliente",
-          "CPF",
-        ],
-      ],
-      body: dataToExport.map((c) => [
-        c.ID_VENDA,
-        c.banco,
-        c.linha_venda,
-        c.produtoVenda,
-        c.nomeColaborador,
-        c.cidadeVenda,
-        formatCurrency(c.valorLiberado),
-        c.prazo,
-        `${c.taxa}%`,
-        formatCurrency(c.comissaoEmpresa),
-        formatCurrency(c.comissaoColaborador),
-        c.promotora,
-        c.dataPagamento,
-        c.nomeCliente,
-        c.cpfCliente,
-      ]),
-      headStyles: {
-        minCellHeight: 15,
-        fontSize: 9,
-        halign: "center",
-        valign: "middle",
-      },
+      head: [["ID", "Banco", "Linha", "Produto Venda", "Agente", "Cidade", "Valor Liberado", "Prazo", "Taxa", "Comissao Empresa", "Comissao Agente", "Promotora", "Data Pagamento", "Cliente", "CPF"]],
+      body: dataToExport.map((c) => [c.ID_VENDA, c.banco, c.linha_venda, c.produtoVenda, c.nomeColaborador, c.cidadeVenda, formatCurrency(c.valorLiberado), c.prazo, `${c.taxa}%`, formatCurrency(c.comissaoEmpresa), formatCurrency(c.comissaoColaborador), c.promotora, c.dataPagamento, c.nomeCliente, c.cpfCliente]),
+      headStyles: { minCellHeight: 15, fontSize: 9, halign: "center", valign: "middle" },
     });
     doc.save("vendas.pdf");
   };
 
   const downloadExcel = () => {
     const dataToExport = filteredSales;
-    const header = [
-      "ID",
-      "Banco",
-      "Produto Venda",
-      "Linha",
-      "Agente",
-      "Cidade",
-      "Valor Liberado",
-      "Prazo",
-      "Taxa",
-      "Comissao Empresa",
-      "Comissao Agente",
-      "Promotora",
-      "Data Pagamento",
-      "Cliente",
-      "CPF",
-    ];
-    const data = dataToExport.map((c) => [
-      c.ID_VENDA,
-      c.banco,
-      c.produtoVenda,
-      c.linha_venda,
-      c.nomeColaborador,
-      c.cidadeVenda,
-      c.valorLiberado,
-      c.prazo,
-      c.taxa,
-      c.comissaoEmpresa,
-      c.comissaoColaborador,
-      c.promotora,
-      c.dataPagamento,
-      c.nomeCliente,
-      c.cpfCliente,
-    ]);
+    const header = ["ID", "Banco", "Produto Venda", "Linha", "Agente", "Cidade", "Valor Liberado", "Prazo", "Taxa", "Comissao Empresa", "Comissao Agente", "Promotora", "Data Pagamento", "Cliente", "CPF"];
+    const data = dataToExport.map((c) => [c.ID_VENDA, c.banco, c.produtoVenda, c.linha_venda, c.nomeColaborador, c.cidadeVenda, c.valorLiberado, c.prazo, c.taxa, c.comissaoEmpresa, c.comissaoColaborador, c.promotora, c.dataPagamento, c.nomeCliente, c.cpfCliente]);
     const worksheet = XLSX.utils.aoa_to_sheet([header, ...data]);
-    worksheet["!cols"] = [
-      { wch: 10 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 20 },
-      { wch: 25 },
-      { wch: 18 },
-    ];
+    worksheet["!cols"] = [{ wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 25 }, { wch: 18 }];
     header.forEach((h, i) => {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: i });
       if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
@@ -452,8 +301,7 @@ export default function Vendas() {
   };
 
   async function handleUpload() {
-    if (!selectedFile)
-      return alert("Por favor, selecione um arquivo para importar.");
+    if (!selectedFile) return alert("Por favor, selecione um arquivo para importar.");
     const formData = new FormData();
     setIsLoading(true);
     formData.append("file", selectedFile);
@@ -461,7 +309,6 @@ export default function Vendas() {
       await api.post("/vendas/upload", formData);
       alert("Arquivo enviado com sucesso!");
       setIsImportOpen(false);
-      // Recarrega os dados para exibir a planilha importada
       const response = await api.get("/vendas/listarven");
       setListVendas(response.data);
     } catch (error) {
@@ -480,51 +327,24 @@ export default function Vendas() {
   };
 
   async function cadastrarVenda() {
-    const requiredFields = [
-      "ID_COLABORADOR",
-      "ID_SUPERVISOR",
-      "cpfCliente",
-      "valorLiberado",
-      "comissaoEmpresa",
-      "taxa",
-      "cidadeVenda",
-      "promotora",
-      "dataPagamento",
-      "linha_venda",
-      "prazo",
-      "banco",
-    ];
     try {
       await api.post("/vendas/cadastrarven", vendaForm);
       alert("Venda cadastrada com sucesso!");
       setIsDialogOpen(false);
-      // Recarrega a lista
       const response = await api.get("/vendas/listarven");
       setListVendas(response.data);
     } catch (error) {
-      alert(
-        "Erro ao cadastrar venda. Verifique os dados"
-      );
+      alert("Erro ao cadastrar venda. Verifique os dados");
     }
   }
 
   async function deleteSale(sale) {
-    if (!sale || isNaN(sale.ID_VENDA))
-      return alert("Erro: Informações da venda inválidas.");
-    if (
-      !window.confirm(
-        `Tem certeza que deseja excluir a venda de valor "${formatCurrency(
-          sale.valorLiberado
-        )}"?`
-      )
-    )
-      return;
+    if (!sale || isNaN(sale.ID_VENDA)) return alert("Erro: Informações da venda inválidas.");
+    if (!window.confirm(`Tem certeza que deseja excluir a venda de valor "${formatCurrency(sale.valorLiberado)}"?`)) return;
     try {
       await api.delete(`/vendas/deleteVenda/${sale.ID_VENDA}`);
       alert("Venda deletada com sucesso!");
-      setListVendas((prevVendas) =>
-        prevVendas.filter((v) => v.ID_VENDA !== sale.ID_VENDA)
-      );
+      setListVendas((prevVendas) => prevVendas.filter((v) => v.ID_VENDA !== sale.ID_VENDA));
     } catch (error) {
       alert("Erro ao deletar venda!");
     }
@@ -546,9 +366,7 @@ export default function Vendas() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Vendas</h1>
-          <p className="text-muted-foreground">
-            Registre e gerencie as vendas realizadas
-          </p>
+          <p className="text-muted-foreground">Registre e gerencie as vendas realizadas</p>
         </div>
         <div className="flex items-center gap-2">
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
@@ -564,26 +382,10 @@ export default function Vendas() {
               <div className="space-y-4">
                 <Input type="file" onChange={handleFileChange} />
                 <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={handleUpload}
-                    disabled={isLoading || !selectedFile}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                        Enviando...
-                      </>
-                    ) : (
-                      "Enviar Arquivo"
-                    )}
+                  <Button onClick={handleUpload} disabled={isLoading || !selectedFile}>
+                    {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>) : ("Enviar Arquivo")}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsImportOpen(false)}
-                    disabled={isLoading}
-                  >
-                    Cancelar
-                  </Button>
+                  <Button variant="outline" onClick={() => setIsImportOpen(false)} disabled={isLoading}>Cancelar</Button>
                 </div>
               </div>
             </DialogContent>
@@ -611,15 +413,8 @@ export default function Vendas() {
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2 pt-4">
-                  <Button className="flex-1" onClick={handleExport}>
-                    Exportar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsExportOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
+                  <Button className="flex-1" onClick={handleExport}>Exportar</Button>
+                  <Button variant="outline" onClick={() => setIsExportOpen(false)}>Cancelar</Button>
                 </div>
               </div>
             </DialogContent>
@@ -634,164 +429,78 @@ export default function Vendas() {
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Registrar Nova Venda</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados da nova venda no sistema.
-                </DialogDescription>
+                <DialogDescription>Preencha os dados da nova venda no sistema.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="cpfCliente">CPF Cliente</Label>
-                  <Input
-                    id="cpfCliente"
-                    type="text"
-                    placeholder="000.000.000-00"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="cpfCliente" type="text" placeholder="000.000.000-00" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="nomeCliente">Nome Cliente</Label>
-                  <Input
-                    id="nomeCliente"
-                    type="text"
-                    placeholder="Nome do Cliente"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="nomeCliente" type="text" placeholder="Nome do Cliente" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="valorLiberado">Valor da Venda (R$)</Label>
-                  <Input
-                    id="valorLiberado"
-                    type="number"
-                    placeholder="45000.00"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="valorLiberado" type="number" placeholder="45000.00" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="prazo">Prazo</Label>
-                  <Input
-                    id="prazo"
-                    type="text"
-                    placeholder="120x"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="prazo" type="text" placeholder="120x" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="promotora">Promotora</Label>
-                  <Input
-                    id="promotora"
-                    type="text"
-                    placeholder="BEVI"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="promotora" type="text" placeholder="BEVI" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="comissaoEmpresa">Comissão Empresa (R$)</Label>
-                  <Input
-                    id="comissaoEmpresa"
-                    type="number"
-                    placeholder="300.57"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="comissaoEmpresa" type="number" placeholder="300.57" onChange={handleChangeForm} />
                 </div>
-
                 <div>
-                  <Label htmlFor="comissaoColaborador">
-                    Comissão Colaborador (R$)
-                  </Label>
-                  <Input
-                    id="comissaoColaborador"
-                    type="number"
-                    placeholder="100.69"
-                    onChange={handleChangeForm}
-                  />
+                  <Label htmlFor="comissaoColaborador">Comissão Colaborador (R$)</Label>
+                  <Input id="comissaoColaborador" type="number" placeholder="100.69" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="taxa">Taxa (%)</Label>
-                  <Input
-                    id="taxa"
-                    type="number"
-                    placeholder="7.89"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="taxa" type="number" placeholder="7.89" onChange={handleChangeForm} />
                 </div>
                 <div>
                   <Label htmlFor="cidadeVenda">Cidade</Label>
-                  <Input
-                    id="cidadeVenda"
-                    type="text"
-                    placeholder="Salvador"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="cidadeVenda" type="text" placeholder="Salvador" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="ID_SUPERVISOR">Supervisor</Label>
-                  <Select
-                    onValueChange={(v) =>
-                      setVendaForm((p) => ({ ...p, ID_SUPERVISOR: v }))
-                    }
-                  >
+                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, ID_SUPERVISOR: v }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o supervisor" />
                     </SelectTrigger>
                     <SelectContent>
                       {supervisors.map((s) => (
-                        <SelectItem
-                          key={s.ID_SUPERVISOR}
-                          value={String(s.ID_SUPERVISOR)}
-                        >
-                          {s.nome}
-                        </SelectItem>
+                        <SelectItem key={s.ID_SUPERVISOR} value={String(s.ID_SUPERVISOR)}>{s.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label htmlFor="ID_COLABORADOR">Colaborador</Label>
-                  <Select
-                    onValueChange={(v) =>
-                      setVendaForm((p) => ({ ...p, ID_COLABORADOR: v }))
-                    }
-                  >
+                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, ID_COLABORADOR: v }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o colaborador" />
                     </SelectTrigger>
                     <SelectContent>
                       {colaborators.map((c) => (
-                        <SelectItem
-                          key={c.ID_COLABORADOR}
-                          value={String(c.ID_COLABORADOR)}
-                        >
-                          {c.nome}
-                        </SelectItem>
+                        <SelectItem key={c.ID_COLABORADOR} value={String(c.ID_COLABORADOR)}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div>
                   <Label htmlFor="banco">Banco</Label>
-                  <Input
-                    id="banco"
-                    type="text"
-                    placeholder="Santander"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="banco" type="text" placeholder="Santander" onChange={handleChangeForm} />
                 </div>
-
                 <div>
                   <Label htmlFor="linha_venda">Linha</Label>
-                  <Select
-                    onValueChange={(v) =>
-                      setVendaForm((p) => ({ ...p, linha_venda: v }))
-                    }
-                  >
+                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, linha_venda: v }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a linha" />
                     </SelectTrigger>
@@ -803,62 +512,34 @@ export default function Vendas() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div>
                   <Label htmlFor="produtoVenda">Produto Venda</Label>
-                  <Select
-                    onValueChange={(v) =>
-                      setVendaForm((p) => ({ ...p, produtoVenda: v }))
-                    }
-                  >
+                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, produtoVenda: v }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o produto" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Novo Consignado">
-                        Novo Consignado
-                      </SelectItem>
+                      <SelectItem value="Novo Consignado">Novo Consignado</SelectItem>
                       <SelectItem value="Renovacao">Renovacao</SelectItem>
                       <SelectItem value="RMC">Cartao RMC</SelectItem>
                       <SelectItem value="RCC">Cartao RCC</SelectItem>
-                      <SelectItem value="Portabilidade Consignado">
-                        Portabilidade Consignado
-                      </SelectItem>
-                      <SelectItem value="Credito Pessoal">
-                        Credito Pessoal
-                      </SelectItem>
-                      <SelectItem value="Port+Refin Consignado">
-                        Port+Refin Consignado
-                      </SelectItem>
-                      <SelectItem value="Decimo Terceiro">
-                        Decimo Terceiro
-                      </SelectItem>
+                      <SelectItem value="Portabilidade Consignado">Portabilidade Consignado</SelectItem>
+                      <SelectItem value="Credito Pessoal">Credito Pessoal</SelectItem>
+                      <SelectItem value="Port+Refin Consignado">Port+Refin Consignado</SelectItem>
+                      <SelectItem value="Decimo Terceiro">Decimo Terceiro</SelectItem>
                       <SelectItem value="CLT">CLT</SelectItem>
                       <SelectItem value="FGTS">FGTS</SelectItem>
                       <SelectItem value="Consorcio">Consorcio</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div>
                   <Label htmlFor="dataPagamento">Data do Pagamento</Label>
-                  <Input
-                    id="dataPagamento"
-                    type="date"
-                    onChange={handleChangeForm}
-                  />
+                  <Input id="dataPagamento" type="date" onChange={handleChangeForm} />
                 </div>
-
                 <div className="flex gap-2 pt-4">
-                  <Button onClick={cadastrarVenda} className="flex-1">
-                    Registrar Venda
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
+                  <Button onClick={cadastrarVenda} className="flex-1">Registrar Venda</Button>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
                 </div>
               </div>
             </DialogContent>
@@ -866,127 +547,90 @@ export default function Vendas() {
         </div>
       </div>
 
-      {/* CARDS */}
       <div className="grid gap-4 md:grid-cols-4">
-        {/* CARD TOTAL DE VENDAS */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Vendas</CardTitle>
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(displayTotals.valorTotalMesAtual)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorTotalMesAtual)}</div>
           </CardContent>
         </Card>
 
-        {/* CARD QUANTIDADE DE VENDAS */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {displayTotals.quantidadeTotal}
-            </div>
+            <div className="text-2xl font-bold">{displayTotals.quantidadeTotal}</div>
             <p className="text-xs text-muted-foreground">Vendas realizadas</p>
           </CardContent>
         </Card>
 
-        {/* CARD MAIOR VENDA */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Maior Venda</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(displayTotals.maiorValorMes)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(displayTotals.maiorValorMes)}</div>
             <p className="text-xs text-muted-foreground">Maior venda registrada</p>
           </CardContent>
         </Card>
 
-        {/* CARD MENOR VENDA */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Menor Venda</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(displayTotals.menorVenda)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Menor venda registrada
-            </p>
+            <div className="text-2xl font-bold">{formatCurrency(displayTotals.menorVenda)}</div>
+            <p className="text-xs text-muted-foreground">Menor venda registrada</p>
           </CardContent>
         </Card>
 
-        {/* COMISSAO EMPRESA */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Comissao Empresa
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Comissao Empresa</CardTitle>
             <CreditCard className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(
-                displayTotals.valorComissaoEmpresa -
-                  (displayTotals.valorComissaoColaboradorClt +
-                    displayTotals.valorComissaoColaboradorMei)
-              )}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoEmpresa)}</div>
             <p className="text-xs text-muted-foreground">Total em comissões</p>
           </CardContent>
         </Card>
 
-        {/* COMISSAO COLABORADOR MEI */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Comissao Colaboador MEI
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Comissao Colaboador MEI</CardTitle>
             <CreditCard className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(displayTotals.valorComissaoColaboradorMei)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoColaboradorMei)}</div>
             <p className="text-xs text-muted-foreground">Total em comissões</p>
           </CardContent>
         </Card>
 
-        {/* COMISSAO COLABORADOR CLT */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Comissao Colaboador CLT
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Comissao Colaboador CLT</CardTitle>
             <CreditCard className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(displayTotals.valorComissaoColaboradorClt)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoColaboradorClt)}</div>
             <p className="text-xs text-muted-foreground">Total em comissões</p>
           </CardContent>
         </Card>
 
-        {/* CARD TICKET MEDIO */}
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
             <Building className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(displayTotals.ticketMedio)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(displayTotals.ticketMedio)}</div>
             <p className="text-xs text-muted-foreground">Por venda</p>
           </CardContent>
         </Card>
@@ -999,55 +643,31 @@ export default function Vendas() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div>
-              <Label htmlFor="search">
-                Buscar por Cliente, CPF ou Colaborador
-              </Label>
+              <Label htmlFor="search">Buscar por Cliente, CPF ou Colaborador</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Digite para buscar..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <Input id="search" placeholder="Digite para buscar..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
             </div>
             <div>
               <Label htmlFor="dataInicial">Data Inicial</Label>
-              <Input
-                type="date"
-                id="dataInicial"
-                value={dataInicialFilter}
-                onChange={(e) => setDataInicialFilter(e.target.value)}
-              />
+              <Input type="date" id="dataInicial" value={dataInicialFilter} onChange={(e) => setDataInicialFilter(e.target.value)} />
             </div>
             <div>
               <Label htmlFor="dataFinal">Data final</Label>
-              <Input
-                type="date"
-                id="dataFinal"
-                value={dataFinalFilter}
-                onChange={(e) => setDataFinalFilter(e.target.value)}
-              />
+              <Input type="date" id="dataFinal" value={dataFinalFilter} onChange={(e) => setDataFinalFilter(e.target.value)} />
             </div>
 
-            {/* NOVO: Filtro por Banco */}
             <div>
               <Label>Filtrar por Banco</Label>
-              <Select
-                onValueChange={setBancoFilter}
-                value={bancoFilter}
-              >
+              <Select onValueChange={setBancoFilter} value={bancoFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os bancos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Bancos</SelectItem>
                   {bancosUnicos.map((banco) => (
-                    <SelectItem key={banco} value={banco}>
-                      {banco}
-                    </SelectItem>
+                    <SelectItem key={banco} value={banco}>{banco}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1056,37 +676,23 @@ export default function Vendas() {
             {["ADMIN", "SUPERVISOR"].includes(currentUser.role) && (
               <div>
                 <Label>Filtrar por Colaborador</Label>
-                <Select
-                  onValueChange={setColaboradorFilter}
-                  value={colaboradorFilter}
-                >
+                <Select onValueChange={setColaboradorFilter} value={colaboradorFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">
-                      Todos os Colaboradores
-                    </SelectItem>
+                    <SelectItem value="todos">Todos os Colaboradores</SelectItem>
                     {colaborators.map((colaborador) => (
-                      <SelectItem
-                        key={colaborador.ID_COLABORADOR}
-                        value={String(colaborador.ID_COLABORADOR)}
-                      >
-                        {colaborador.nome}
-                      </SelectItem>
+                      <SelectItem key={colaborador.ID_COLABORADOR} value={String(colaborador.ID_COLABORADOR)}>{colaborador.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
 
-            {/* NOVO: Ordenação por Valor */}
             <div>
               <Label>Ordenar por Valor</Label>
-              <Select
-                onValueChange={setOrdenacaoValor}
-                value={ordenacaoValor}
-              >
+              <Select onValueChange={setOrdenacaoValor} value={ordenacaoValor}>
                 <SelectTrigger>
                   <SelectValue placeholder="Ordenação padrão" />
                 </SelectTrigger>
@@ -1106,16 +712,8 @@ export default function Vendas() {
           <CardTitle>Lista de Vendas</CardTitle>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Label
-                htmlFor="itemsPerPage"
-                className="text-sm text-muted-foreground"
-              >
-                Itens por página:
-              </Label>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(value) => setItemsPerPage(Number(value))}
-              >
+              <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">Itens por página:</Label>
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
                 </SelectTrigger>
@@ -1128,9 +726,7 @@ export default function Vendas() {
               </Select>
             </div>
             <div className="text-sm text-muted-foreground">
-              Mostrando {indexOfFirstItem + 1}-
-              {Math.min(indexOfLastItem, filteredSales.length)} de{" "}
-              {filteredSales.length} vendas
+              Mostrando {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredSales.length)} de {filteredSales.length} vendas
             </div>
           </div>
         </CardHeader>
@@ -1140,20 +736,15 @@ export default function Vendas() {
               <TableRow>
                 <TableHead>Cliente</TableHead>
                 <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      // Alternar entre ordenações ao clicar no cabeçalho
-                      if (ordenacaoValor === "decrescente") {
-                        setOrdenacaoValor("crescente");
-                      } else if (ordenacaoValor === "crescente") {
-                        setOrdenacaoValor("padrao");
-                      } else {
-                        setOrdenacaoValor("decrescente");
-                      }
-                    }}
-                    className="flex items-center gap-1 p-0 hover:bg-transparent"
-                  >
+                  <Button variant="ghost" onClick={() => {
+                    if (ordenacaoValor === "decrescente") {
+                      setOrdenacaoValor("crescente");
+                    } else if (ordenacaoValor === "crescente") {
+                      setOrdenacaoValor("padrao");
+                    } else {
+                      setOrdenacaoValor("decrescente");
+                    }
+                  }} className="flex items-center gap-1 p-0 hover:bg-transparent">
                     Valor
                     <ArrowUpDown className="h-4 w-4" />
                   </Button>
@@ -1171,27 +762,19 @@ export default function Vendas() {
                   <TableCell>
                     <div>
                       <p className="font-medium">{venda.nomeCliente}</p>
-                      <p className="text-sm text-muted-foreground">
-                        CPF: {venda.cpfCliente}
-                      </p>
+                      <p className="text-sm text-muted-foreground">CPF: {venda.cpfCliente}</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">
-                        {formatCurrency(venda.valorLiberado)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {venda.dataPagamento}
-                      </p>
+                      <p className="font-medium">{formatCurrency(venda.valorLiberado)}</p>
+                      <p className="text-sm text-muted-foreground">{venda.dataPagamento}</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium">{venda.colaborador ? venda.colaborador.nome : "Venda do Supervisor"}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Supervisor: {venda.nomeSupervisor}
-                      </p>
+                      <p className="text-sm text-muted-foreground">Supervisor: {venda.nomeSupervisor}</p>
                     </div>
                   </TableCell>
                   <TableCell>{venda.banco}</TableCell>
@@ -1209,11 +792,7 @@ export default function Vendas() {
                         </Button>
                       </Link>
                       {["ADMIN", "SUPERVISOR"].includes(currentUser.role) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteSale(venda)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => deleteSale(venda)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       )}
@@ -1225,69 +804,28 @@ export default function Vendas() {
             <TableFooter>
               <TableRow>
                 <TableCell colSpan={7}>
-                  {/* Controles de paginação */}
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Página {currentPage} de {totalPages}
-                    </div>
-
+                    <div className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</div>
                     <div className="flex items-center gap-1">
-                      {/* Botão anterior */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={prevPage}
-                        disabled={currentPage === 1}
-                      >
+                      <Button variant="outline" size="sm" onClick={prevPage} disabled={currentPage === 1}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-
-                      {/* Números de página */}
                       {getPageNumbers().map((pageNumber) => (
-                        <Button
-                          key={pageNumber}
-                          variant={
-                            currentPage === pageNumber ? "default" : "outline"
-                          }
-                          size="sm"
-                          onClick={() => goToPage(pageNumber)}
-                          className="w-8 h-8 p-0"
-                        >
+                        <Button key={pageNumber} variant={currentPage === pageNumber ? "default" : "outline"} size="sm" onClick={() => goToPage(pageNumber)} className="w-8 h-8 p-0">
                           {pageNumber}
                         </Button>
                       ))}
-
-                      {/* Botão próximo */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={nextPage}
-                        disabled={currentPage === totalPages}
-                      >
+                      <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage === totalPages}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 </TableCell>
               </TableRow>
-
-              {/* Linha de totais */}
               <TableRow>
-                <TableCell className="font-semibold text-lg" colSpan={2}>
-                  Totais (Filtro Atual)
-                </TableCell>
-                <TableCell
-                  className="font-semibold text-lg text-left"
-                  colSpan={2}
-                >
-                  {formatCurrency(filteredSaleTotals.valorTotalMesAtual)}
-                </TableCell>
-                <TableCell
-                  className="font-semibold text-lg text-left"
-                  colSpan={3}
-                >
-                  {filteredSaleTotals.quantidadeTotal} vendas
-                </TableCell>
+                <TableCell className="font-semibold text-lg" colSpan={2}>Totais (Filtro Atual)</TableCell>
+                <TableCell className="font-semibold text-lg text-left" colSpan={2}>{formatCurrency(filteredSaleTotals.valorTotalMesAtual)}</TableCell>
+                <TableCell className="font-semibold text-lg text-left" colSpan={3}>{filteredSaleTotals.quantidadeTotal} vendas</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
