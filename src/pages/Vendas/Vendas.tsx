@@ -547,93 +547,143 @@ export default function Vendas() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Vendas</CardTitle>
-            <DollarSign className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorTotalMesAtual)}</div>
-          </CardContent>
-        </Card>
+ <div className="grid gap-4 md:grid-cols-4">
+        {currentUser.role === "USER" ? (
+          <>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Minhas Vendas</CardTitle>
+                <DollarSign className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorTotalMesAtual)}</div>
+                <p className="text-xs text-muted-foreground">Total vendido</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{displayTotals.quantidadeTotal}</div>
-            <p className="text-xs text-muted-foreground">Vendas realizadas</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
+                <Users className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{displayTotals.quantidadeTotal}</div>
+                <p className="text-xs text-muted-foreground">Vendas realizadas</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Maior Venda</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotals.maiorValorMes)}</div>
-            <p className="text-xs text-muted-foreground">Maior venda registrada</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+                <Building className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.ticketMedio)}</div>
+                <p className="text-xs text-muted-foreground">Por venda</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Menor Venda</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotals.menorVenda)}</div>
-            <p className="text-xs text-muted-foreground">Menor venda registrada</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Minha Comissão</CardTitle>
+                <CreditCard className="h-4 w-4 text-success" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoColaboradorClt + displayTotals.valorComissaoColaboradorMei)}</div>
+                <p className="text-xs text-muted-foreground">Total em comissões</p>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Vendas</CardTitle>
+                <DollarSign className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorTotalMesAtual)}</div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Comissao Empresa</CardTitle>
-            <CreditCard className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoEmpresa)}</div>
-            <p className="text-xs text-muted-foreground">Total em comissões</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
+                <Users className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{displayTotals.quantidadeTotal}</div>
+                <p className="text-xs text-muted-foreground">Vendas realizadas</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Comissao Colaboador MEI</CardTitle>
-            <CreditCard className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoColaboradorMei)}</div>
-            <p className="text-xs text-muted-foreground">Total em comissões</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Maior Venda</CardTitle>
+                <Users className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.maiorValorMes)}</div>
+                <p className="text-xs text-muted-foreground">Maior venda registrada</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Comissao Colaboador CLT</CardTitle>
-            <CreditCard className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoColaboradorClt)}</div>
-            <p className="text-xs text-muted-foreground">Total em comissões</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Menor Venda</CardTitle>
+                <Users className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.menorVenda)}</div>
+                <p className="text-xs text-muted-foreground">Menor venda registrada</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-            <Building className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotals.ticketMedio)}</div>
-            <p className="text-xs text-muted-foreground">Por venda</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Comissao Empresa</CardTitle>
+                <CreditCard className="h-4 w-4 text-success" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoEmpresa)}</div>
+                <p className="text-xs text-muted-foreground">Total em comissões</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Comissao Colaboador MEI</CardTitle>
+                <CreditCard className="h-4 w-4 text-success" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoColaboradorMei)}</div>
+                <p className="text-xs text-muted-foreground">Total em comissões</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Comissao Colaboador CLT</CardTitle>
+                <CreditCard className="h-4 w-4 text-success" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorComissaoColaboradorClt)}</div>
+                <p className="text-xs text-muted-foreground">Total em comissões</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+                <Building className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(displayTotals.ticketMedio)}</div>
+                <p className="text-xs text-muted-foreground">Por venda</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       <Card>
