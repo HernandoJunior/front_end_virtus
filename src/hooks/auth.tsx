@@ -15,8 +15,6 @@ interface SignInCredentials {
   senha: string;
 }
 
-
-
 // Tipagem para o contexto de autenticação
 interface AuthContextType {
   user: User | null;
@@ -35,7 +33,8 @@ interface AuthProviderProps {
 function AuthProvider({ children }: AuthProviderProps) {
   const navigate = useNavigate();
   const [data, setData] = useState<{ user: User | null; token?: string }>({ user: null });
-    async function signIn({ email, senha }) {
+  
+  async function signIn({ email, senha }: SignInCredentials) {
     try {
       const response = await api.post("/auth/login", { email, senha });
 
@@ -58,7 +57,7 @@ function AuthProvider({ children }: AuthProviderProps) {
 
       navigate("/dashboard")
 
-    } catch (error) {
+    } catch (error: any) {
       if (error.response) {
         alert("Informacoes incorretas, tente novamente!")
       } else {
@@ -72,7 +71,6 @@ function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem("@virtus:user");
     setData({ user: null });
     navigate("/")
-    
   }
 
   useEffect(() => {
@@ -84,7 +82,35 @@ function AuthProvider({ children }: AuthProviderProps) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setData({ user, token });
     }
-  }, []);
+
+    // Configurar interceptor para detectar token expirado
+    const interceptor = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        // Se o erro for 401 (não autorizado) ou 403 (token expirado)
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          // Limpar localStorage automaticamente
+          localStorage.removeItem("@virtus:token");
+          localStorage.removeItem("@virtus:user");
+          
+          // Limpar estado
+          setData({ user: null });
+          
+          // Redirecionar para login
+          navigate("/");
+          
+          // Opcional: mostrar mensagem ao usuário
+          alert("Sessão expirada. Faça login novamente.");
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup: remover interceptor quando o componente desmontar
+    return () => {
+      api.interceptors.response.eject(interceptor);
+    };
+  }, [navigate]);
 
   return (
     <AuthContext.Provider value={{ user: data.user, signIn, signOut }}>
