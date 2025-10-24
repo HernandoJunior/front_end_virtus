@@ -97,7 +97,7 @@ export default function Carteiras() {
                   <div className="text-right">
                     <div className="text-2xl font-bold text-success">{formatCurrency(carteira.totalVendasEquipe)}</div>
                     <div className="text-sm text-muted-foreground">Meta: {carteira.metaGeralAtingimento.toFixed(1)}%</div>
-                    <div className="text-sm text-primary">Comissão: {formatCurrency(carteira.totalComissaoEquipe * 0.27)}</div>
+                    {/* <div className="text-sm text-primary">Comissão: {formatCurrency(carteira.totalComissaoEquipe)}</div> */}
                   </div>
                 </div>
               </CardHeader>

@@ -309,7 +309,7 @@ export default function GerenciarCarteira() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(carteira.estatisticas.comissaoTotal * 0.27)}
+              {formatCurrency(carteira.estatisticas.comissaoTotal)}
             </div>
             <p className="text-xs text-muted-foreground">Período atual</p>
           </CardContent>

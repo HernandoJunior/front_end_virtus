@@ -1,32 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
-import { useParams, Link, MemoryRouter } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
-  Plus,
   Search,
-  Edit,
   Users,
   TrendingUp,
   DollarSign,
-  Target,
-  Eye,
-  Download,
   UserPlus,
-  Trash2,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -43,18 +27,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api } from "@/services/api"; // Descomente em seu projeto real
+import { api } from "@/services/api";
 
 export default function SupervisorCarteira() {
   const { id } = useParams();
-  const [carteira, setCarteira] = useState<any>(null);
-  const [allClients, setAllClients] = useState<any[]>([]);
+  const [carteira, setCarteira] = useState(null);
+  const [allClients, setAllClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("all");
   const [activeTab, setActiveTab] = useState("clientes");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     const idToFetch = id;
@@ -76,7 +59,7 @@ export default function SupervisorCarteira() {
     fetchData();
   }, [id]);
 
-  const formatCurrency = (value: number) =>
+  const formatCurrency = (value) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
@@ -84,29 +67,30 @@ export default function SupervisorCarteira() {
 
   const clientesDaCarteira = useMemo(() => {
     if (!carteira || !allClients.length) return [];
-    const idsDosColaboradores = carteira.colaboradores.map(
-      (colab: any) => colab.id
-    );
+    const idsDosColaboradores = carteira.colaboradores.map((colab) => colab.id);
     return allClients.filter(
-      (cliente: any) =>
+      (cliente) =>
         cliente.colaborador &&
         idsDosColaboradores.includes(cliente.colaborador.ID_COLABORADOR)
     );
   }, [carteira, allClients]);
 
   const colaboradoresComStats = useMemo(() => {
+
     if (!carteira) return [];
-    return carteira.colaboradores.map((colab: any) => {
+    return carteira.colaboradores.map((colab) => {
       const clientesDoColaborador = allClients.filter(
         (c) => c.colaborador && c.colaborador.ID_COLABORADOR === colab.id
       );
-      const clientesAtivos = colab.clientesAtivos
+      const clientesAtivos = colab.clientesAtivos;
       return { ...colab, clientesAtivos };
     });
+
   }, [carteira, allClients]);
 
+  console.log(colaboradoresComStats)
   const clientesFiltrados = useMemo(() => {
-    return clientesDaCarteira.filter((cliente: any) => {
+    return clientesDaCarteira.filter((cliente) => {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch =
         cliente.nome.toLowerCase().includes(searchLower) ||
@@ -136,16 +120,14 @@ export default function SupervisorCarteira() {
   }
 
   const { nome } = carteira;
-  const { totalVendasEquipe, metaGeralAtingimento, totalComissaoEquipe } =
-    carteira;
+  const { totalVendasEquipe, totalComissaoEquipe } = carteira;
   const totalClientes = clientesDaCarteira.length;
   const clientesAtivos = colaboradoresComStats.reduce((acumulador, count) => {
-    return acumulador + count.clientesAtivos
-}, 0)
+    return acumulador + count.clientesAtivos;
+  }, 0);
   const clientesInativos = colaboradoresComStats.reduce((acumulador, count) => {
-    return acumulador + count.clientesInativos
-}, 0)
-
+    return acumulador + count.clientesInativos;
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -166,31 +148,9 @@ export default function SupervisorCarteira() {
             </p>
           </div>
         </div>
-        {/* <div className="flex gap-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Adicionar Cliente à Carteira</DialogTitle>
-                <DialogDescription>
-                  Associe um novo cliente a esta carteira
-                </DialogDescription>
-              </DialogHeader>
-            </DialogContent>
-          </Dialog>
-        </div> */}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card className="shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -232,19 +192,6 @@ export default function SupervisorCarteira() {
 
         <Card className="shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Meta Geral</CardTitle>
-            <Target className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {metaGeralAtingimento.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">Atingimento</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Comissão Total
             </CardTitle>
@@ -269,7 +216,8 @@ export default function SupervisorCarteira() {
             <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
-          <div className="flex items-center gap-2">
+          {/* //Buscar */}
+          {/* <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -280,6 +228,9 @@ export default function SupervisorCarteira() {
               />
             </div>
             <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="Ativo">Ativo</SelectItem>
@@ -287,7 +238,7 @@ export default function SupervisorCarteira() {
                 <SelectItem value="Férias">Férias</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
 
         <TabsContent value="colaboradores">
@@ -304,12 +255,12 @@ export default function SupervisorCarteira() {
                     <TableHead>Colaborador</TableHead>
                     <TableHead>Clientes Ativos</TableHead>
                     <TableHead>Vendas</TableHead>
-                    <TableHead>Meta</TableHead>
                     <TableHead>Comissão</TableHead>
+                    <TableHead>Regime</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {colaboradoresComStats.map((col: any) => (
+                  {colaboradoresComStats.map((col) => (
                     <TableRow key={col.id}>
                       <TableCell>
                         <div>
@@ -322,7 +273,6 @@ export default function SupervisorCarteira() {
                       <TableCell>
                         <div className="text-center">
                           <span className="text-lg font-bold">
-                          
                             {col.clientesAtivos}
                           </span>
                           <p className="text-xs text-muted-foreground">
@@ -336,27 +286,17 @@ export default function SupervisorCarteira() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-medium">
-                            {col.metaAtingimento.toFixed(1)}%
-                          </div>
-                          <div
-                            className={`w-2 h-2 rounded-full ${
-                              col.metaAtingimento >= 80
-                                ? "bg-success"
-                                : col.metaAtingimento >= 60
-                                ? "bg-warning"
-                                : "bg-destructive"
-                            }`}
-                          ></div>
+                        <div className="font-medium text-primary">
+                          {formatCurrency(col.totalComissao)}
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          {col.regimeContratacao === "MEI" ? "35%" : "27%"} da comissão da empresa
+                        </p>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-primary">
-                          {col.regimeContratacao ? 
-                          formatCurrency(col.totalComissao * 0.35) 
-                          : formatCurrency(col.totalComissao * 0.27)}
-                        </div>
+                        <span className="text-sm font-medium">
+                          {col.regimeContratacao}
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -372,22 +312,34 @@ export default function SupervisorCarteira() {
               <CardHeader>
                 <CardTitle>Resumo de Performance</CardTitle>
               </CardHeader>
-                  <CardContent className="space-y-4">
+              <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Total de Vendas</span>
-                  <span className="font-bold">{formatCurrency(totalVendasEquipe)}</span>
+                  <span className="font-bold">
+                    {formatCurrency(totalVendasEquipe)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Total de Comissões</span>
-                  <span className="font-bold">{formatCurrency(totalComissaoEquipe)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Atingimento da Meta</span>
-                  <span className="font-bold">{metaGeralAtingimento.toFixed(1)}%</span>
+                  <span className="font-bold">
+                    {formatCurrency(totalComissaoEquipe)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Total de Colaboradores</span>
-                  <span className="font-bold">{colaboradoresComStats.length}</span>
+                  <span className="font-bold">
+                    {colaboradoresComStats.length}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Ticket Médio por Colaborador</span>
+                  <span className="font-bold">
+                    {formatCurrency(
+                      colaboradoresComStats.length > 0
+                        ? totalVendasEquipe / colaboradoresComStats.length
+                        : 0
+                    )}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -408,9 +360,11 @@ export default function SupervisorCarteira() {
                     <div className="w-3 h-3 rounded-full bg-muted"></div>
                     <span className="text-sm">Clientes Inativos</span>
                   </div>
-                  <span className="font-bold">
-                    {clientesInativos}
-                  </span>
+                  <span className="font-bold">{clientesInativos}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-sm font-semibold">Total de Clientes</span>
+                  <span className="font-bold">{totalClientes}</span>
                 </div>
               </CardContent>
             </Card>
