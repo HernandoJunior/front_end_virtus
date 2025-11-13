@@ -361,7 +361,7 @@ export default function VendaDetalhes() {
                         <span className="font-semibold">Comissao Liquida Empresa:</span>
                         <span className="font-bold">
                           {formatCurrency(
-                            (venda.comissaoEmpresa || 0) - calcularComissaoLiquida()
+                            calcularComissaoLiquida()
                           )}
                         </span>
                       </div>

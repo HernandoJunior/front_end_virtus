@@ -1,13 +1,40 @@
-import axios from "axios";
+import axios from 'axios';
 
-// Pega a URL da API do ambiente, com fallback para localhost
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
-
-export const api = axios.create({
-  baseURL,
-  timeout: 30000, // 30 segundos
-  withCredentials: true, // Importante para CORS com cookies/credenciais
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080'
 });
 
+// Interceptor para adicionar o token
+api.interceptors.request.use(
+  (config) => {
+    const user = localStorage.getItem('@virtus:user');
+    if (user) {
+      const userData = JSON.parse(user);
+      if (userData.token) {
+        config.headers.Authorization = `Bearer ${userData.token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-export default api;
+// Interceptor para tratar erros
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('Erro na API:', error);
+    
+    if (error.response?.status === 401) {
+      // Token expirado, redirecionar para login
+      localStorage.removeItem('@virtus:user');
+      window.location.href = '/';
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+export { api };
