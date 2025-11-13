@@ -73,44 +73,6 @@ function AuthProvider({ children }: AuthProviderProps) {
     navigate("/")
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem("@virtus:token");
-    const storedUser = localStorage.getItem("@virtus:user");
-
-    if (token && storedUser) {
-      const user: User = JSON.parse(storedUser);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setData({ user, token });
-    }
-
-    // Configurar interceptor para detectar token expirado
-    const interceptor = api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        // Se o erro for 401 (não autorizado) ou 403 (token expirado)
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          // Limpar localStorage automaticamente
-          localStorage.removeItem("@virtus:token");
-          localStorage.removeItem("@virtus:user");
-          
-          // Limpar estado
-          setData({ user: null });
-          
-          // Redirecionar para login
-          navigate("/");
-          
-          // Opcional: mostrar mensagem ao usuário
-          alert("Sessão expirada. Faça login novamente.");
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    // Cleanup: remover interceptor quando o componente desmontar
-    return () => {
-      api.interceptors.response.eject(interceptor);
-    };
-  }, [navigate]);
 
   return (
     <AuthContext.Provider value={{ user: data.user, signIn, signOut }}>
