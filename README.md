@@ -180,7 +180,7 @@ Este projeto é privado e proprietário.
 
 ## 👥 Equipe
 
-Desenvolvido pela equipe Virtus
+Desenvolvido para equipe Virtus
 
 ## 📞 Suporte
 
