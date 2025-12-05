@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Users, Plus, Search, Edit, Trash2, Mail, Phone } from "lucide-react";
+import { Users, Plus, Search, Edit, Trash2, Mail, Phone, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 
 import { api } from "@/services/api";
@@ -42,6 +43,11 @@ export default function Usuarios() {
   const [listAdministrador, setListAdministrador] = useState([]);
   const [listColaboradores, setListColaboradores] = useState([]);
   const [listSupervisores, setlistSupervisores] = useState([]);
+
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const listAllUsers = [
     ...listAdministrador,
     ...listColaboradores,
@@ -318,6 +324,45 @@ export default function Usuarios() {
     fetchAdministradores(), fetchSupervisores(), fetchColaboradores();
   };
 
+  // Lógica de paginação
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleTerm, statusTerm, filteredUsers.length]);
+
+  const nextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return pageNumbers;
+  };
+
   usuarios;
   return (
     <div className="space-y-6">
@@ -571,8 +616,27 @@ export default function Usuarios() {
 
       {/* Tabela de Usuários */}
       <Card className="shadow-card">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Lista de Usuários</CardTitle>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">Itens por página:</Label>
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Mostrando {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredUsers.length)} de {filteredUsers.length} usuários
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -587,7 +651,7 @@ export default function Usuarios() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((usuario) => {
+              {currentUsers.map((usuario) => {
                 const role = usuario.role;
                 const user = usuario;
                 
@@ -644,6 +708,28 @@ export default function Usuarios() {
                 );
               })}
             </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={6}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">Página {currentPage} de {totalPages}</div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" onClick={prevPage} disabled={currentPage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      {getPageNumbers().map((pageNumber) => (
+                        <Button key={pageNumber} variant={currentPage === pageNumber ? "default" : "outline"} size="sm" onClick={() => goToPage(pageNumber)} className="w-8 h-8 p-0">
+                          {pageNumber}
+                        </Button>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage === totalPages}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableFooter>
           </Table>
         </CardContent>
       </Card>
