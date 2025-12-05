@@ -73,6 +73,18 @@ function AuthProvider({ children }: AuthProviderProps) {
     navigate("/")
   }
 
+  useEffect(() => {
+    const token = localStorage.getItem("@virtus:token");
+    const user = localStorage.getItem("@virtus:user");
+
+    if (token && user) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setData({
+        token,
+        user: JSON.parse(user)
+      });
+    }
+  }, [])
 
   return (
     <AuthContext.Provider value={{ user: data.user, signIn, signOut }}>
