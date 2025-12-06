@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import dayjs from "dayjs";
+import "dayjs/locale/pt-br";
+
 import { 
   BarChart3,
   Download,
@@ -33,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { setMonth } from "date-fns";
 
 interface RelatorioCompleto {
   kpis: {
@@ -69,6 +73,15 @@ interface RelatorioCompleto {
 
 export default function Relatorios() {
   const [relatorioData, setRelatorioData] = useState<RelatorioCompleto | null>(null);
+  const [relatorioMesComissaoEmpresa, setRelatorioMesComissaoEmpresa] = useState({
+        valorComissaoColaboradorClt : 0,
+        valorComissaoColaboradorMei : 0,
+        valorComissaoEmpresa : 0,
+        valorTotalMesAtual : 0,
+        variacaoPercentual : 0,
+        quantidadeTotal : 0,
+        ticketMedio : 0
+  })
   
   // Estados para os filtros
   const [periodo, setPeriodo] = useState('ultimos-30-dias');
@@ -93,6 +106,9 @@ export default function Relatorios() {
         case 'ultimos-3-meses':
             dataInicial.setMonth(dataInicial.getMonth() - 3);
             break;
+        case 'ultimo-1-ano':
+            dataInicial.setMonth(dataInicial.getMonth() - 11);
+            break;
         case 'ultimos-30-dias':
         default:
             dataInicial.setDate(dataFinal.getDate() - 30);
@@ -102,12 +118,13 @@ export default function Relatorios() {
       const params = new URLSearchParams({
         dataInicial: dataInicial.toISOString().split('T')[0],
         dataFinal: dataFinal.toISOString().split('T')[0],
-        // Adicione outros filtros aqui, se não forem 'todos'
       });
 
       try {
         const response = await api.get(`/relatorios/vendas?${params.toString()}`);
+        const responseKpiComissaoEmpresa = await api.get(`/vendas/mes?${params}`)
         setRelatorioData(response.data);
+        setRelatorioMesComissaoEmpresa(responseKpiComissaoEmpresa.data)
       } catch (error) {
         console.error("Erro ao buscar relatório:", error);
       }
@@ -182,11 +199,11 @@ export default function Relatorios() {
                 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Comissões</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Comissões Empresa</CardTitle>
                     <Target className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-success">{formatCurrency(kpis.totalComissoes)}</div>
+                    <div className="text-2xl font-bold text-success">{formatCurrency(relatorioMesComissaoEmpresa.valorComissaoEmpresa)}</div>
                     <p className="text-xs text-muted-foreground mt-1">Comissões do período</p>
                   </CardContent>
                 </Card>
@@ -211,7 +228,6 @@ export default function Relatorios() {
                             <TableHead>Período</TableHead>
                             <TableHead>Qtd. Vendas</TableHead>
                             <TableHead>Valor Total</TableHead>
-                            <TableHead>Total Comissões</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -220,9 +236,9 @@ export default function Relatorios() {
                                 <TableCell className="font-medium">{item.periodo}</TableCell>
                                 <TableCell>{item.qtdVendas}</TableCell>
                                 <TableCell>{formatCurrency(item.valorTotal)}</TableCell>
-                                <TableCell className="font-bold text-success">
+                                {/* <TableCell className="font-bold text-success">
                                   {formatCurrency(item.totalComissoes)}
-                                </TableCell>
+                                </TableCell> */}
                               </TableRow>
                             ))}
                         </TableBody>

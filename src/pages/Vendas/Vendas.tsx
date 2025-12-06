@@ -266,12 +266,23 @@ export default function Vendas() {
 
   const downloadPDF = () => {
     const dataToExport = filteredSales;
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
     autoTable(doc, {
       head: [["ID", "Banco", "Linha", "Produto Venda", "Agente", "Cidade", "Valor Liberado", "Prazo", "Taxa", "Comissao Empresa", "Comissao Agente", "Promotora", "Data Pagamento", "Cliente", "CPF"]],
-      body: dataToExport.map((c) => [c.ID_VENDA, c.banco, c.linha_venda, c.produtoVenda, c.nomeColaborador, c.cidadeVenda, formatCurrency(c.valorLiberado), c.prazo, `${c.taxa}%`, formatCurrency(c.comissaoEmpresa), formatCurrency(c.comissaoColaborador), c.promotora, c.dataPagamento, c.nomeCliente, c.cpfCliente]),
+
+      body: dataToExport.map((c) => 
+        [
+          c.ID_VENDA, c.banco, 
+          c.linha_venda.toUpperCase(), c.produtoVenda, 
+          c.colaborador.nome, c.cidadeVenda, 
+          formatCurrency(c.valorLiberado), c.prazo, 
+          `${c.taxa}%`, formatCurrency(c.comissaoEmpresa), formatCurrency(c.comissaoColaborador),
+          c.promotora, c.dataPagamento, c.nomeCliente, c.cpfCliente
+        ]),
+      
       headStyles: { minCellHeight: 15, fontSize: 9, halign: "center", valign: "middle" },
     });
+
     doc.save("vendas.pdf");
   };
 
@@ -547,7 +558,7 @@ export default function Vendas() {
         </div>
       </div>
 
- <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-4">
         {currentUser.role === "USER" ? (
           <>
             <Card>

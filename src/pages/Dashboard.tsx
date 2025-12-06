@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [salesKpi, setSalesKpi] = useState({
     valorTotalVendas: 0,
     variacaoPercentual: 0,
+    valorTotalMesAtual: 0,
     quantidadeTotal: 0,
     comissaoTotal: 0,
     ticketMedio: 0,
@@ -124,8 +125,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Bem-vindo, {currentUser?.nome || 'Usuário'}</p>
+          <h1> Bem-vindo, {currentUser?.nome || 'Usuário'}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center space-x-2">
@@ -145,7 +145,7 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title={`${titleText} Vendas`}
-          value={formatCurrency(salesKpi.valorTotalVendas)}
+          value={formatCurrency(salesKpi.valorTotalMesAtual)}
           icon={DollarSign}
           trend={typeof salesKpi.variacaoPercentual === 'number' ? { value: parseFloat(salesKpi.variacaoPercentual.toFixed(1)), label: "vs período anterior" } : undefined}
         />

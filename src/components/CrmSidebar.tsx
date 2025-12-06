@@ -25,7 +25,7 @@ import {
 
 // Definição completa de todos os itens de navegação
 const allNavigationItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "Principal" },
+  { title: "Painel de Gestao", url: "/dashboard", icon: LayoutDashboard, group: "Principal" },
   { title: "Clientes", url: "/clientes", icon: Users, group: "Gestão" },
   { title: "Carteiras", url: "/carteiras", icon: UserCheck, group: "Gestão" },
   { title: "Propostas", url: "/propostas", icon: FileText, group: "Vendas" },
