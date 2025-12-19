@@ -511,17 +511,7 @@ export default function Vendas() {
                 </div>
                 <div>
                   <Label htmlFor="linha_venda">Linha</Label>
-                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, linha_venda: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a linha" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inss">INSS</SelectItem>
-                      <SelectItem value="govsp">GOV SP</SelectItem>
-                      <SelectItem value="prefsp">PREF SP</SelectItem>
-                      <SelectItem value="govba">GOV BA</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input id="linha_venda" type="text" placeholder="Inss" onChange={handleChangeForm} />
                 </div>
                 <div>
                   <Label htmlFor="produtoVenda">Produto Venda</Label>
