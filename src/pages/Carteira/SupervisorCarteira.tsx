@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   TrendingUp,
   DollarSign,
   UserPlus,
+  Calendar,
 } from "lucide-react";
 import {
   Select,
@@ -37,26 +38,48 @@ export default function SupervisorCarteira() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("all");
-  const [activeTab, setActiveTab] = useState("clientes");
+  const [activeTab, setActiveTab] = useState("colaboradores");
+
+  // Date filter states
+  const [dataInicio, setDataInicio] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .split("T")[0];
+  });
+  const [dataFim, setDataFim] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      .toISOString()
+      .split("T")[0];
+  });
+
+  const fetchData = async (inicio, fim) => {
+    const startDate = inicio !== undefined ? inicio : dataInicio;
+    const endDate = fim !== undefined ? fim : dataFim;
+        
+    setIsLoading(true);
+    try {
+      const [carteiraRes, clientesRes] = await Promise.all([
+        api.get(`/carteiras/${id}`, {
+          params: {
+            dataInicio: startDate,
+            dataFim: endDate,
+          },
+        }),
+        api.get("/clientes/consulta"),
+      ]);
+      setCarteira(carteiraRes.data);
+      setAllClients(clientesRes.data);
+    } catch (error) {
+      console.error("Erro ao buscar dados:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const idToFetch = id;
-    async function fetchData() {
-      setIsLoading(true);
-      try {
-        const [carteiraRes, clientesRes] = await Promise.all([
-          api.get(`/carteiras/${idToFetch}`),
-          api.get("/clientes/consulta"),
-        ]);
-        setCarteira(carteiraRes.data);
-        setAllClients(clientesRes.data);
-      } catch (error) {
-        console.error("Erro ao buscar dados:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchData();
+    fetchData(dataInicio, dataFim);
   }, [id]);
 
   const formatCurrency = (value) =>
@@ -76,7 +99,6 @@ export default function SupervisorCarteira() {
   }, [carteira, allClients]);
 
   const colaboradoresComStats = useMemo(() => {
-
     if (!carteira) return [];
     return carteira.colaboradores.map((colab) => {
       const clientesDoColaborador = allClients.filter(
@@ -85,10 +107,8 @@ export default function SupervisorCarteira() {
       const clientesAtivos = colab.clientesAtivos;
       return { ...colab, clientesAtivos };
     });
-
   }, [carteira, allClients]);
 
-  console.log(colaboradoresComStats)
   const clientesFiltrados = useMemo(() => {
     return clientesDaCarteira.filter((cliente) => {
       const searchLower = searchTerm.toLowerCase();
@@ -101,6 +121,20 @@ export default function SupervisorCarteira() {
       return matchesSearch && matchesStatus;
     });
   }, [clientesDaCarteira, searchTerm, filtroStatus]);
+
+  const handleAplicarFiltro = () => {
+    fetchData(dataInicio, dataFim);
+  };
+
+  const handleResetarFiltro = () => {
+    const now = new Date();
+    const inicio = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const fim = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+    
+    setDataInicio(inicio);
+    setDataFim(fim);
+    fetchData(inicio, fim);
+  };
 
   if (isLoading || !carteira) {
     return (
@@ -150,6 +184,48 @@ export default function SupervisorCarteira() {
         </div>
       </div>
 
+      {/* Date Filter Section */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Filtro de Período
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium mb-2 block">
+                Data Início
+              </label>
+              <Input
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium mb-2 block">
+                Data Fim
+              </label>
+              <Input
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <Button onClick={handleAplicarFiltro}>
+              Aplicar Filtro
+            </Button>
+            <Button variant="outline" onClick={handleResetarFiltro}>
+              Resetar para Mês Atual
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -186,7 +262,7 @@ export default function SupervisorCarteira() {
             <div className="text-2xl font-bold">
               {formatCurrency(totalVendasEquipe)}
             </div>
-            <p className="text-xs text-muted-foreground">Acumulado</p>
+            <p className="text-xs text-muted-foreground">No período</p>
           </CardContent>
         </Card>
 
@@ -201,7 +277,7 @@ export default function SupervisorCarteira() {
             <div className="text-2xl font-bold">
               {formatCurrency(totalComissaoEquipe)}
             </div>
-            <p className="text-xs text-muted-foreground">Período atual</p>
+            <p className="text-xs text-muted-foreground">No período</p>
           </CardContent>
         </Card>
       </div>
@@ -216,29 +292,6 @@ export default function SupervisorCarteira() {
             <TabsTrigger value="colaboradores">Colaboradores</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
-          {/* //Buscar */}
-          {/* <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar..."
-                className="pl-8 w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="Ativo">Ativo</SelectItem>
-                <SelectItem value="Inativo">Inativo</SelectItem>
-                <SelectItem value="Férias">Férias</SelectItem>
-              </SelectContent>
-            </Select>
-          </div> */}
         </div>
 
         <TabsContent value="colaboradores">
@@ -290,7 +343,8 @@ export default function SupervisorCarteira() {
                           {formatCurrency(col.totalComissao)}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {col.regimeContratacao === "MEI" ? "35%" : "27%"} da comissão da empresa
+                          {col.regimeContratacao === "MEI" ? "35%" : "27%"} da
+                          comissão da empresa
                         </p>
                       </TableCell>
                       <TableCell>
@@ -363,7 +417,9 @@ export default function SupervisorCarteira() {
                   <span className="font-bold">{clientesInativos}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-sm font-semibold">Total de Clientes</span>
+                  <span className="text-sm font-semibold">
+                    Total de Clientes
+                  </span>
                   <span className="font-bold">{totalClientes}</span>
                 </div>
               </CardContent>

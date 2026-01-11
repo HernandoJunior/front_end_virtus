@@ -74,7 +74,6 @@ export default function VendaDetalhes() {
       setIsEditing(false);
       alert("Venda atualizada com sucesso!");
     } catch (error) {
-      console.error("Erro ao salvar alterações:", error);
       alert("Não foi possível salvar as alterações. Tente novamente.");
     }
   };
@@ -122,7 +121,6 @@ export default function VendaDetalhes() {
     if (!venda.colaborador || !venda.comissaoColaborador) {
       return 0;
     }
-    console.log(venda.comissaoColaborador)
     return venda.comissaoColaborador;
   };
 
@@ -360,9 +358,7 @@ export default function VendaDetalhes() {
                       <div className="flex justify-between pt-2 border-t">
                         <span className="font-semibold">Comissao Liquida Empresa:</span>
                         <span className="font-bold">
-                          {formatCurrency(
-                            calcularComissaoLiquida()
-                          )}
+                          {formatCurrency(venda.comissaoEmpresa - venda.comissaoColaborador)}
                         </span>
                       </div>
                     </>
