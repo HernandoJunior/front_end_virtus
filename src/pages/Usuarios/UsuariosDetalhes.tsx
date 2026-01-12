@@ -186,7 +186,10 @@ export default function UsuarioDetalhes() {
                             </div>
                             {renderField("Nome Completo", "nome", usuario.nome)}
                             {renderField("E-mail", "email", usuario.email, "email")}
-                            {renderField("Perfil", "role", usuario.role)}
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Perfil</span>
+                                <span className="font-medium">{usuario.role}</span>                        
+                            </div>
                         </div>
                     </div>
                     <div className="space-y-4">
