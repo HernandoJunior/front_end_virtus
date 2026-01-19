@@ -1,90 +1,91 @@
+// src/hooks/auth.tsx (NÃO auth.routes.tsx!)
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { api } from "../services/api";
-import { useNavigate } from "react-router-dom";
 
-// Tipagem para o usuário — adicione mais campos conforme o retorno da sua API
 interface User {
-  id: string;
-  name: string;
+  ID_ADMINISTRADOR?: number;
+  ID_SUPERVISOR?: number;
+  ID_COLABORADOR?: number;
+  nome: string;
   email: string;
+  role: string;
+  cpf?: string;
+  telefone?: string;
 }
 
-// Tipagem para as credenciais de login
 interface SignInCredentials {
   email: string;
   senha: string;
 }
 
-// Tipagem para o contexto de autenticação
 interface AuthContextType {
   user: User | null;
+  loading: boolean;
   signIn: (credentials: SignInCredentials) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
+  checkAuth: () => Promise<void>;
 }
 
-// Criar o contexto com tipo explícito
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-// Tipagem para o AuthProvider
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 function AuthProvider({ children }: AuthProviderProps) {
-  const navigate = useNavigate();
-  const [data, setData] = useState<{ user: User | null; token?: string }>({ user: null });
-  
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Verifica se o usuário está autenticado ao carregar a aplicação
+  async function checkAuth() {
+    try {
+      const response = await api.get('/auth/me');
+      setUser(response.data.user);
+    } catch (error) {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function signIn({ email, senha }: SignInCredentials) {
     try {
       const response = await api.post("/auth/login", { email, senha });
 
-      if(response){
-        alert("Login efetuado com sucesso!")
-      }
+      // O token já está no cookie httpOnly
+      // A API retorna apenas os dados públicos do usuário
+      const { user } = response.data;
 
-      // CORREÇÃO: Capturar o 'user' e o 'token' da resposta.
-      const { user, token } = response.data;
+      setUser(user);
       
-      // Guardar ambos no localStorage para persistir o login.
-      localStorage.setItem("@virtus:token", token);
-      localStorage.setItem("@virtus:user", JSON.stringify(user));
-
-      // Configurar o cabeçalho padrão para futuras requisições.
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      // Atualizar o estado com ambos os dados para acionar a renderização.
-      setData({ user, token });
-
-      navigate("/dashboard")
-
+      // Não precisa de navigate aqui, o Routes vai redirecionar automaticamente
     } catch (error: any) {
       if (error.response) {
-        alert("Informacoes incorretas, tente novamente!")
+        throw new Error(error.response.data.message || "Informações incorretas");
       } else {
-        alert("Não foi possível entrar.");
+        throw new Error("Não foi possível entrar. Verifique sua conexão.");
       }
     }
   }
 
-  function signOut() {
-    localStorage.removeItem("@virtus:token");
-    localStorage.removeItem("@virtus:user");
-    setData({ user: null });
-    navigate("/")
+  async function signOut() {
+    try {
+      // Chama o endpoint de logout para revogar o refresh token
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      setUser(null);
+      // Não precisa de navigate, o Routes vai redirecionar automaticamente
+    }
   }
 
   useEffect(() => {
-    const token = localStorage.getItem("@virtus:token");
-    const user = localStorage.getItem("@virtus:user");
-
-    if (token && user) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setData({ token, user: JSON.parse(user) });
-    }
-  }, [])
+    checkAuth();
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user: data.user, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

@@ -112,6 +112,8 @@ export default function UsuarioDetalhes() {
         }
     };
 
+    console.log(usuario)
+
     if (loading) {
         return <div className="p-4 text-center">Carregando...</div>;
     }

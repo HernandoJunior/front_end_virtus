@@ -1,65 +1,38 @@
-import { useState } from "react";
+// src/pages/Login.tsx
+import { useState, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2 } from "lucide-react";
-import { useAuth } from '../hooks/auth'
-import { api } from '../services/api'
-import { useNavigate } from "react-router-dom";
+import { Building2, Loader2 } from "lucide-react";
+import { useAuth } from '../hooks/auth';
 
-
-
-export default function Auth() {
+export default function Login() {
   const { signIn } = useAuth();
-  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [registerForm, setRegisterForm] = useState({
-    nome: "",
-    email: "",
-    cpf: "",
-    senha: "",
-    role: ""
-  });
-
-  const handleLogin = (event) => {
+  async function handleLogin(event: FormEvent) {
     event.preventDefault();
-    async function login() {
-      try {
-        const response = await signIn({ email , senha })
-      } catch (error) {
-        alert(error)
-        navigate("/")
-      }
-  }
 
-  login()
-    
-  };
-
-  async function handleRegister () {
-    if(!registerForm.cpf || !registerForm.email || !registerForm.nome || !registerForm.role || !registerForm.senha){
-      return alert("Preencha todos os campos")
+    if (!email || !senha) {
+      alert("Preencha todos os campos");
+      return;
     }
-    const response = await api.post("/administrador/create", registerForm)
-    .then(() => {
-      alert("Usuario cadastrado com sucesso!");
-    })
-    .catch(error => {
-      if(error.response){
-        alert(error.response.data.message)
-      } else {
-        alert("Erro ao cadastrar o usuário")
-        console.log(error)
-        console.log(registerForm)
-      }
-    })
-  };
+
+    setLoading(true);
+
+    try {
+      await signIn({ email, senha });
+      // Após login bem-sucedido, Routes redirecionará automaticamente
+    } catch (error: any) {
+      alert(error.message || "Erro ao fazer login");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -73,51 +46,54 @@ export default function Auth() {
           <p className="text-muted-foreground">Sistema de gestão empresarial</p>
         </div>
 
-        {/* Formulários */}
+        {/* Formulário de Login */}
         <Card className="shadow-lg">
-          <Tabs defaultValue="login" className="w-full">
-            
-            {/* Formulário de Login */}
-            <TabsContent value="login">
-              <CardHeader>
-                <CardTitle>Entrar na conta</CardTitle>
-                <CardDescription>
-                  Digite suas credenciais para acessar o sistema
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={handleLogin}>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail( e.target.value )}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Senha</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="Digite sua senha"
-                      value={senha}
-                      onChange={(e) => setSenha( e.target.value )}
-                      required
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full">
-                    Entrar
-                  </Button>
-                </CardFooter>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <CardHeader>
+            <CardTitle>Entrar na conta</CardTitle>
+            <CardDescription>
+              Digite suas credenciais para acessar o sistema
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={handleLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-email">Email</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">Senha</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  placeholder="Digite sua senha"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </CardFooter>
+          </form>
         </Card>
       </div>
     </div>

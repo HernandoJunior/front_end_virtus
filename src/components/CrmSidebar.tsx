@@ -41,7 +41,6 @@ export function CrmSidebar() {
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
 
-  // 1. Pega o usuário e a role do localStorage
   const userRole = useMemo(() => {
     const storedUser = localStorage.getItem('@virtus:user');
     if (storedUser) {
@@ -56,7 +55,6 @@ export function CrmSidebar() {
     return null;
   }, []);
 
-  // 2. Filtra os itens de navegação com base na role
   const accessibleNavigationItems = useMemo(() => {
     if (userRole === 'ADMIN') {
       return allNavigationItems; // Admin vê tudo
@@ -73,7 +71,6 @@ export function CrmSidebar() {
     return allNavigationItems.filter(item => item.group === "Principal");
   }, [userRole]);
 
-  // 3. Agrupa os itens JÁ FILTRADOS
   const groupedItems = accessibleNavigationItems.reduce((groups, item) => {
     const group = item.group;
     if (!groups[group]) {
