@@ -6,25 +6,17 @@ import { Input } from "@/components/ui/input";
 import { User, Edit, Save, X, ArrowLeft, DollarSign } from "lucide-react";
 import { api } from "@/services/api";
 import { formatCurrency } from "@/utils/formatter";
+import { useAuth } from "@/hooks/auth";
 
 export default function VendaDetalhes() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [venda, setVenda] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
-  const [currentUser, setCurrentUser] = useState({ role: null, id: null });
-
-  // Efeito para buscar dados do usuário logado do localStorage
-  useEffect(() => {
-    const userDataString = localStorage.getItem("@virtus:user");
-    if (userDataString) {
-      const userData = JSON.parse(userDataString);
-      setCurrentUser({ role: userData.role, id: userData.id });
-    }
-  }, []);
 
   useEffect(() => {
     async function fetchSale() {
@@ -102,13 +94,13 @@ export default function VendaDetalhes() {
   // Função para verificar se o usuário pode ver informações de comissão
   const canViewCommission = () => {
     // ADMIN e SUPERVISOR podem ver todas as comissões
-    if (["ADMIN", "SUPERVISOR"].includes(currentUser.role)) {
+    if (["ADMIN", "SUPERVISOR"].includes(user?.role)) {
       return true;
     }
     
     // USER só pode ver se for o colaborador da venda
-    if (currentUser.role === "USER" && venda.colaborador) {
-      return venda.colaborador.id === currentUser.id;
+    if (user?.role === "USER" && venda.colaborador) {
+      return venda.colaborador.id === user.ID_ADMINISTRADOR;
     }
     
     return false;
@@ -339,7 +331,7 @@ export default function VendaDetalhes() {
                   Detalhamento da Comissão
                 </h4>
                 <div className="space-y-2 text-sm">
-                  {["ADMIN", "SUPERVISOR"].includes(currentUser.role) && (
+                  {["ADMIN", "SUPERVISOR"].includes(user?.role) && (
                     <>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Comissão da Empresa:</span>
@@ -363,7 +355,7 @@ export default function VendaDetalhes() {
                       </div>
                     </>
                   )}
-                  {currentUser.role === "USER" && (
+                  {user?.role === "USER" && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Sua Comissão:</span>
                       <span className="font-medium text-green-600 text-lg">

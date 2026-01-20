@@ -224,7 +224,6 @@ export default function Clientes() {
 
     setIsLoading(true);
     try {
-      // Requisição para o backend
       await api.put("/clientes/reatribuir", {
         clienteIds: selectedClients,
         novoColaboradorId: newColaboradorId
@@ -272,9 +271,9 @@ export default function Clientes() {
         );
       } else {
         console.log("ELSE DO FILTRO COLABORADOR: ", colaboradorFilter)
-        console.log(processedClients)
+        console.log("PROCESSED CLIENTES: ", processedClients)
         processedClients = processedClients.filter(client =>
-          client.colaborador.id_COLABORADOR === colaboradorFilter
+          client.ID_COLABORADOR == colaboradorFilter
         );
       }
     }
@@ -805,7 +804,7 @@ export default function Clientes() {
                       onCheckedChange={() => handleSelectClient(cliente.ID_CLIENTE)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{cliente.colaborador ? cliente.colaborador.nome : "Colaborador nao vinculado"}</TableCell>
+                  <TableCell className="font-medium">{cliente.ID_COLABORADOR ? cliente.nomeColaborador : "Colaborador nao vinculado"}</TableCell>
                   <TableCell>{cliente.nome}</TableCell>
                   <TableCell>{cliente.cpf}</TableCell>
                   <TableCell className="font-bold text-success">{cliente.margem}</TableCell>

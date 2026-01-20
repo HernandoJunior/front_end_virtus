@@ -333,7 +333,7 @@ export default function ClienteDetalhes() {
                                 {renderField("Nome", "nome", cliente.nome)}
                               <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Colaborador</span>
-                                <span className="font-medium">{cliente.colaborador ? cliente.colaborador.nome : "Colaborador nao vinculado"}</span>
+                                <span className="font-medium">{cliente.ID_COLABORADOR ? cliente.nomeColaborador : "Colaborador nao vinculado"}</span>
                               </div>
                             <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Status do Cliente</span>

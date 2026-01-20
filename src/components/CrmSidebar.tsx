@@ -1,5 +1,6 @@
+// src/components/CrmSidebar.tsx
 import { NavLink, useLocation } from "react-router-dom";
-import { useMemo } from 'react'; // Importe o useMemo
+import { useMemo } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -22,68 +23,99 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/auth"; // ✅ IMPORTAR useAuth
 
 // Definição completa de todos os itens de navegação
 const allNavigationItems = [
-  { title: "Painel de Gestao", url: "/dashboard", icon: LayoutDashboard, group: "Principal" },
-  { title: "Clientes", url: "/clientes", icon: Users, group: "Gestão" },
-  { title: "Carteiras", url: "/carteiras", icon: UserCheck, group: "Gestão" },
-  { title: "Propostas", url: "/propostas", icon: FileText, group: "Vendas" },
-  { title: "Vendas", url: "/vendas", icon: TrendingUp, group: "Vendas" },
-  { title: "Metas", url: "/metas", icon: Target, group: "Performance" },
-  { title: "Relatórios", url: "/relatorios", icon: TrendingUp, group: "Performance" },
-  { title: "Usuários", url: "/usuarios", icon: UserCheck, group: "Configuração" },
+  { 
+    title: "Painel de Gestao", 
+    url: "/dashboard", 
+    icon: LayoutDashboard, 
+    group: "Principal",
+    roles: ['ADMIN', 'SUPERVISOR', 'USER']
+  },
+  { 
+    title: "Clientes", 
+    url: "/clientes", 
+    icon: Users, 
+    group: "Gestão",
+    roles: ['ADMIN', 'SUPERVISOR', 'USER']
+  },
+  { 
+    title: "Carteiras", 
+    url: "/carteiras", 
+    icon: UserCheck, 
+    group: "Gestão",
+    roles: ['ADMIN', 'SUPERVISOR']
+  },
+  { 
+    title: "Propostas", 
+    url: "/propostas", 
+    icon: FileText, 
+    group: "Vendas",
+    roles: ['ADMIN', 'SUPERVISOR', 'USER']
+  },
+  { 
+    title: "Vendas", 
+    url: "/vendas", 
+    icon: TrendingUp, 
+    group: "Vendas",
+    roles: ['ADMIN', 'SUPERVISOR', 'USER']
+  },
+  { 
+    title: "Metas", 
+    url: "/metas", 
+    icon: Target, 
+    group: "Performance",
+    roles: ['ADMIN', 'SUPERVISOR']
+  },
+  { 
+    title: "Relatórios", 
+    url: "/relatorios", 
+    icon: TrendingUp, 
+    group: "Performance",
+    roles: ['ADMIN', 'SUPERVISOR']
+  },
+  { 
+    title: "Usuários", 
+    url: "/usuarios", 
+    icon: UserCheck, 
+    group: "Configuração",
+    roles: ['ADMIN']
+  }
 ];
 
 export function CrmSidebar() {
+  const { user } = useAuth(); // ✅ USAR useAuth
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
 
-  const userRole = useMemo(() => {
-    const storedUser = localStorage.getItem('@virtus:user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        return user.role;
-      } catch (e) {
-        console.error("Erro ao parsear dados do usuário:", e);
-        return null;
-      }
-    }
-    return null;
-  }, []);
-
+  // ✅ Filtrar itens baseado na role do usuário autenticado
   const accessibleNavigationItems = useMemo(() => {
-    if (userRole === 'ADMIN') {
-      return allNavigationItems; // Admin vê tudo
-    }
-    if (userRole === 'SUPERVISOR') {
-      const supervisorGroups = ["Principal", "Gestão", "Vendas", "Configuração"];
-      return allNavigationItems.filter(item => supervisorGroups.includes(item.group));
-    }
-    if (userRole === 'USER') {
-      const userTitles = ["Dashboard", "Vendas", "Propostas", "Clientes"];
-      return allNavigationItems.filter(item => userTitles.includes(item.title));
-    }
-    // Retorna um menu padrão ou vazio se não houver role
-    return allNavigationItems.filter(item => item.group === "Principal");
-  }, [userRole]);
+    if (!user) return [];
+    
+    return allNavigationItems.filter(item => 
+      item.roles.includes(user.role)
+    );
+  }, [user]);
 
-  const groupedItems = accessibleNavigationItems.reduce((groups, item) => {
-    const group = item.group;
-    if (!groups[group]) {
-      groups[group] = [];
-    }
-    groups[group].push(item);
-    return groups;
-  }, {} as Record<string, typeof accessibleNavigationItems>);
-
+  // Agrupar itens por categoria
+  const groupedItems = useMemo(() => {
+    return accessibleNavigationItems.reduce((groups, item) => {
+      const group = item.group;
+      if (!groups[group]) {
+        groups[group] = [];
+      }
+      groups[group].push(item);
+      return groups;
+    }, {} as Record<string, typeof accessibleNavigationItems>);
+  }, [accessibleNavigationItems]);
 
   const isActive = (path: string) => {
-    if (path === "/") {
-      return currentPath === "/";
+    if (path === "/dashboard") {
+      return currentPath === "/dashboard" || currentPath === "/";
     }
     return currentPath.startsWith(path);
   };
@@ -94,6 +126,11 @@ export function CrmSidebar() {
         ? "bg-primary text-primary-foreground font-medium" 
         : "text-muted-foreground hover:text-foreground"
     }`;
+
+  // ✅ Não renderizar se não houver usuário
+  if (!user) {
+    return null;
+  }
 
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
@@ -131,8 +168,3 @@ export function CrmSidebar() {
     </Sidebar>
   );
 }
-
-
-
-
-

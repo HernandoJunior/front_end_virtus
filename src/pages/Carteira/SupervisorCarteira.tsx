@@ -1,24 +1,16 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
-  Search,
   Users,
   TrendingUp,
   DollarSign,
   UserPlus,
   Calendar,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -33,11 +25,7 @@ import { api } from "@/services/api";
 export default function SupervisorCarteira() {
   const { id } = useParams();
   const [carteira, setCarteira] = useState(null);
-  const [allClients, setAllClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState("all");
   const [activeTab, setActiveTab] = useState("colaboradores");
 
   // Date filter states
@@ -60,17 +48,13 @@ export default function SupervisorCarteira() {
         
     setIsLoading(true);
     try {
-      const [carteiraRes, clientesRes] = await Promise.all([
-        api.get(`/carteiras/${id}`, {
-          params: {
-            dataInicio: startDate,
-            dataFim: endDate,
-          },
-        }),
-        api.get("/clientes/consulta"),
-      ]);
-      setCarteira(carteiraRes.data);
-      setAllClients(clientesRes.data);
+      const response = await api.get(`/carteiras/${id}`, {
+        params: {
+          dataInicio: startDate,
+          dataFim: endDate,
+        },
+      });
+      setCarteira(response.data);
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
     } finally {
@@ -88,39 +72,11 @@ export default function SupervisorCarteira() {
       currency: "BRL",
     }).format(value);
 
-  const clientesDaCarteira = useMemo(() => {
-    if (!carteira || !allClients.length) return [];
-    const idsDosColaboradores = carteira.colaboradores.map((colab) => colab.id);
-    return allClients.filter(
-      (cliente) =>
-        cliente.colaborador &&
-        idsDosColaboradores.includes(cliente.colaborador.ID_COLABORADOR)
-    );
-  }, [carteira, allClients]);
 
   const colaboradoresComStats = useMemo(() => {
     if (!carteira) return [];
-    return carteira.colaboradores.map((colab) => {
-      const clientesDoColaborador = allClients.filter(
-        (c) => c.colaborador && c.colaborador.ID_COLABORADOR === colab.id
-      );
-      const clientesAtivos = colab.clientesAtivos;
-      return { ...colab, clientesAtivos };
-    });
-  }, [carteira, allClients]);
-
-  const clientesFiltrados = useMemo(() => {
-    return clientesDaCarteira.filter((cliente) => {
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch =
-        cliente.nome.toLowerCase().includes(searchLower) ||
-        cliente.cpf.includes(searchTerm) ||
-        (cliente.email && cliente.email.toLowerCase().includes(searchLower));
-      const matchesStatus =
-        filtroStatus === "all" || cliente.status === filtroStatus;
-      return matchesSearch && matchesStatus;
-    });
-  }, [clientesDaCarteira, searchTerm, filtroStatus]);
+    return carteira.colaboradores;
+  }, [carteira]);
 
   const handleAplicarFiltro = () => {
     fetchData(dataInicio, dataFim);
@@ -128,13 +84,19 @@ export default function SupervisorCarteira() {
 
   const handleResetarFiltro = () => {
     const now = new Date();
-    const inicio = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-    const fim = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+    const inicio = new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .split("T")[0];
+    const fim = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      .toISOString()
+      .split("T")[0];
     
     setDataInicio(inicio);
     setDataFim(fim);
     fetchData(inicio, fim);
   };
+
+  console.log(carteira)
 
   if (isLoading || !carteira) {
     return (
@@ -153,15 +115,18 @@ export default function SupervisorCarteira() {
     );
   }
 
-  const { nome } = carteira;
-  const { totalVendasEquipe, totalComissaoEquipe } = carteira;
-  const totalClientes = clientesDaCarteira.length;
-  const clientesAtivos = colaboradoresComStats.reduce((acumulador, count) => {
-    return acumulador + count.clientesAtivos;
-  }, 0);
-  const clientesInativos = colaboradoresComStats.reduce((acumulador, count) => {
-    return acumulador + count.clientesInativos;
-  }, 0);
+  const { nome, totalVendasEquipe, totalComissaoEquipe } = carteira;
+  
+  // Calcular totais a partir dos colaboradores
+  const clientesAtivos = colaboradoresComStats.reduce(
+    (acumulador, colab) => acumulador + (colab.clientesAtivos || 0),
+    0
+  );
+  const clientesInativos = colaboradoresComStats.reduce(
+    (acumulador, colab) => acumulador + (colab.clientesInativos || 0),
+    0
+  );
+  const totalClientes = clientesAtivos + clientesInativos;
 
   return (
     <div className="space-y-6">
@@ -216,13 +181,14 @@ export default function SupervisorCarteira() {
                 className="w-full"
               />
             </div>
-            <Button onClick={handleAplicarFiltro}>
-              Aplicar Filtro
-            </Button>
+            <Button onClick={handleAplicarFiltro}>Aplicar Filtro</Button>
             <Button variant="outline" onClick={handleResetarFiltro}>
               Resetar para Mês Atual
             </Button>
           </div>
+          <p className="text-sm text-muted-foreground mt-3">
+            📊 Os dados de clientes ativos, vendas, comissões e performance são atualizados de acordo com o período selecionado.
+          </p>
         </CardContent>
       </Card>
 
@@ -249,7 +215,7 @@ export default function SupervisorCarteira() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientesAtivos}</div>
-            <p className="text-xs text-muted-foreground">Ativos</p>
+            <p className="text-xs text-muted-foreground">No período</p>
           </CardContent>
         </Card>
 
@@ -307,6 +273,7 @@ export default function SupervisorCarteira() {
                   <TableRow>
                     <TableHead>Colaborador</TableHead>
                     <TableHead>Clientes Ativos</TableHead>
+                    <TableHead>Clientes Inativos</TableHead>
                     <TableHead>Vendas</TableHead>
                     <TableHead>Comissão</TableHead>
                     <TableHead>Regime</TableHead>
@@ -325,22 +292,32 @@ export default function SupervisorCarteira() {
                       </TableCell>
                       <TableCell>
                         <div className="text-center">
-                          <span className="text-lg font-bold">
-                            {col.clientesAtivos}
+                          <span className="text-lg font-bold text-success">
+                            {col.clientesAtivos || 0}
                           </span>
                           <p className="text-xs text-muted-foreground">
-                            clientes
+                            ativos
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-center">
+                          <span className="text-lg font-bold text-muted-foreground">
+                            {col.clientesInativos || 0}
+                          </span>
+                          <p className="text-xs text-muted-foreground">
+                            inativos
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="font-medium text-success">
-                          {formatCurrency(col.totalVendas)}
+                          {formatCurrency(col.totalVendas || 0)}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="font-medium text-primary">
-                          {formatCurrency(col.totalComissao)}
+                          {formatCurrency(col.totalComissao || 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {col.regimeContratacao === "MEI" ? "35%" : "27%"} da
@@ -395,6 +372,14 @@ export default function SupervisorCarteira() {
                     )}
                   </span>
                 </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-sm">Média de Clientes Ativos/Colaborador</span>
+                  <span className="font-bold">
+                    {colaboradoresComStats.length > 0
+                      ? (clientesAtivos / colaboradoresComStats.length).toFixed(1)
+                      : 0}
+                  </span>
+                </div>
               </CardContent>
             </Card>
             <Card className="shadow-card">
@@ -421,6 +406,15 @@ export default function SupervisorCarteira() {
                     Total de Clientes
                   </span>
                   <span className="font-bold">{totalClientes}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-sm">Taxa de Ativação</span>
+                  <span className="font-bold text-primary">
+                    {totalClientes > 0
+                      ? ((clientesAtivos / totalClientes) * 100).toFixed(1)
+                      : 0}
+                    %
+                  </span>
                 </div>
               </CardContent>
             </Card>
