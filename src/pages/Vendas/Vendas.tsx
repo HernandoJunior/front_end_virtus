@@ -842,11 +842,9 @@ export default function Vendas() {
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Link>
-                      {["ADMIN", "SUPERVISOR"].includes(currentUser.role) && (
                         <Button variant="ghost" size="sm" onClick={() => deleteSale(venda)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
-                      )}
                     </div>
                   </TableCell>
                 </TableRow>
