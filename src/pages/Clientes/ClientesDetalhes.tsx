@@ -1,182 +1,4 @@
-// import { useEffect, useState } from "react";
-// import { useParams, Link } from "react-router-dom";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Badge } from "@/components/ui/badge";
-// import { Mail, Phone, IdCard, Edit, FileText, CalendarCheck, User } from "lucide-react";
-// import { api } from "@/services/api";
 
-
-// export default function ClienteDetalhes() {
-//   const { id } = useParams();
-//   const clienteId = Number(id);
-//   const [listClients, setListClients] = useState([]);
-//   const cliente = listClients.find((c) => c.ID_CLIENTE === clienteId);
-
-//   useEffect(() => {
-//     async function fetchclient() {
-//       try {
-//         const response = await api.get("/clientes/consulta");
-//         setListClients(response.data);
-//         console.log(listClients)
-//       } catch (error) {
-//         console.error("Erro ao buscar clientes:", error);
-//       }
-//     }
-
-//     fetchclient()
-//   }, []);
-
-
-//   useEffect(() => {
-//     document.title = cliente
-//       ? `Cliente: ${cliente.nome} | Virtus CRM`
-//       : `Cliente | Virtus CRM`;
-//     let meta = document.querySelector('meta[name="description"]');
-//     if (!meta) {
-//       meta = document.createElement('meta');
-//       meta.setAttribute('name', 'description');
-//       document.head.appendChild(meta);
-//     }
-//     meta.setAttribute(
-//       'content',
-//       `Detalhes do cliente ${cliente?.nome ?? ''} no CRM Virtus. Contatos, status e informações principais.`
-//     );
-//     let link = document.querySelector('link[rel="canonical"]');
-//     if (!link) {
-//       link = document.createElement('link');
-//       link.setAttribute('rel', 'canonical');
-//       document.head.appendChild(link);
-//     }
-//     link.setAttribute('href', window.location.href);
-//   }, [cliente]);
-
-//   if (!cliente) {
-//     return (
-//       <div className="space-y-4">
-//         <h1 className="text-3xl font-bold text-foreground">Cliente não encontrado</h1>
-//         <Button variant="outline" asChild>
-//           <Link to="/clientes">Voltar</Link>
-//         </Button>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="space-y-6">
-//       <header className="flex items-center justify-between">
-//         <div>
-//           <h1 className="text-3xl font-bold text-foreground">Detalhes do Cliente</h1>
-//           <p className="text-muted-foreground">Informações completas do cliente</p>
-//         </div>
-//         <div className="flex gap-2">
-//           <Button variant="default">
-//             <Edit className="h-4 w-4 mr-2" /> Editar
-//           </Button>
-//           <Button variant="outline" asChild>
-//             <Link to={`/clientes/${clienteId}/propostas`}>
-//               <FileText className="h-4 w-4 mr-2" /> Propostas
-//             </Link>
-//           </Button>
-//           <Button variant="outline" asChild>
-//             <Link to="/clientes">Voltar</Link>
-//           </Button>
-//         </div>
-//       </header>
-
-//       <Card className="shadow-card">
-//         <CardHeader>
-//           <CardTitle className="flex items-center gap-2">
-//             <User className="h-5 w-5 text-primary" />
-//             Informações do Cliente
-//           </CardTitle>
-//         </CardHeader>
-//         <CardContent className="space-y-6">
-//           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-//             <div className="space-y-4">
-//               <h3 className="text-lg font-semibold text-foreground border-b pb-2">Identificação</h3>
-//               <div className="space-y-3">
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">ID Cliente</span>
-//                   <span className="font-medium">{clienteId}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Nome</span>
-//                   <span className="font-medium">{cliente.nome}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">CPF</span>
-//                   <span className="font-medium">{cliente.cpf}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">E-mail</span>
-//                   <span className="font-medium">{cliente.email}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Matrícula</span>
-//                   <span className="font-medium">{cliente.matricula}</span>
-//                 </div>
-//               </div>
-//             </div>
-
-//             <div className="space-y-4">
-//               <h3 className="text-lg font-semibold text-foreground border-b pb-2">Serviço e Margem</h3>
-//               <div className="space-y-3">
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Serviço</span>
-//                   <span className="font-medium">{cliente.servico}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Margem Disponível</span>
-//                   <span className="font-bold text-success">{cliente.margem_disponivel}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Margem Total</span>
-//                   <span className="font-medium">{cliente.margem_total}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Margem</span>
-//                   <span className="font-medium">{cliente.margem.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Valor Liberado</span>
-//                   <span className="font-medium">{cliente.valor_liberado}</span>
-//                 </div>
-//               </div>
-//             </div>
-
-//             <div className="space-y-4">
-//               <h3 className="text-lg font-semibold text-foreground border-b pb-2">Dados Pessoais</h3>
-//               <div className="space-y-3">
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Data de Nascimento</span>
-//                   <span className="font-medium">{cliente.data_nascimento}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Idade</span>
-//                   <span className="font-medium">{cliente.idade} anos</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Telefone Principal</span>
-//                   <span className="font-medium">{cliente.telefone}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Telefone 2</span>
-//                   <span className="font-medium">{cliente.telefone_2}</span>
-//                 </div>
-//                 <div className="flex flex-col">
-//                   <span className="text-sm text-muted-foreground">Telefone 3</span>
-//                   <span className="font-medium">{cliente.telefone_3}</span>
-//                 </div>
-//               </div>
-//             </div>
-
-//           </div>
-//         </CardContent>
-//       </Card>
-//     </div>
-//   );
-// }
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Precisa importar o componente de Input
 import { User, Edit, FileText, Save, X } from "lucide-react"; // Adicionar ícones para Salvar e Cancelar
 import { api } from "@/services/api";
-import { log } from "console";
 
 export default function ClienteDetalhes() {
     const { id } = useParams();
@@ -378,7 +199,7 @@ export default function ClienteDetalhes() {
                         <div className="space-y-4">
                             <h3 className="text-lg font-semibold text-foreground border-b pb-2">Informaçoes adicionais</h3>
                             <div className="space-y-3">
-                                {renderField("Endereço", "endereco", cliente.endereço, "text")}
+                                {renderField("Endereço", "endereco", cliente.endereco, "text")}
                             </div>
                         </div>
 

@@ -146,7 +146,6 @@ export default function Relatorios() {
           <h1 className="text-3xl font-bold text-foreground">Relatórios</h1>
           <p className="text-muted-foreground">Análise detalhada de vendas, comissões e performance</p>
         </div>
-        <Button variant="outline"><Download className="h-4 w-4 mr-2" /> Exportar CSV</Button>
       </div>
 
       <Card>

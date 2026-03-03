@@ -56,7 +56,6 @@ export default function Vendas() {
   const [vendaForm, setVendaForm] = useState({
     ID_COLABORADOR: "",
     ID_SUPERVISOR: "",
-    cpfCliente: "",
     valorLiberado: "",
     comissaoColaborador: "",
     comissaoEmpresa: "",
@@ -68,7 +67,13 @@ export default function Vendas() {
     prazo: "",
     banco: "",
     produtoVenda: "",
+    // Campo Cliente
+    cpfCliente: "",
     nomeCliente: "",
+    dataNascimento: "",
+    telefone: "",
+    endereco: "",
+    convenio: "",
   });
 
   const [currentUser, setCurrentUser] = useState({ role: null, id: null });
@@ -269,20 +274,17 @@ export default function Vendas() {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
     autoTable(doc, {
       head: [["ID", "Banco", "Linha", "Produto Venda", "Agente", "Cidade", "Valor Liberado", "Prazo", "Taxa", "Comissao Empresa", "Comissao Agente", "Promotora", "Data Pagamento", "Cliente", "CPF"]],
-
-      body: dataToExport.map((c) => 
+      body: dataToExport.map((c) =>
         [
-          c.ID_VENDA, c.banco, 
-          c.linha_venda.toUpperCase(), c.produtoVenda, 
-          c.colaborador.nome, c.cidadeVenda, 
-          formatCurrency(c.valorLiberado), c.prazo, 
+          c.ID_VENDA, c.banco,
+          c.linha_venda.toUpperCase(), c.produtoVenda,
+          c.colaborador.nome, c.cidadeVenda,
+          formatCurrency(c.valorLiberado), c.prazo,
           `${c.taxa}%`, formatCurrency(c.comissaoEmpresa), formatCurrency(c.comissaoColaborador),
           c.promotora, c.dataPagamento, c.nomeCliente, c.cpfCliente
         ]),
-      
       headStyles: { minCellHeight: 15, fontSize: 9, halign: "center", valign: "middle" },
     });
-
     doc.save("vendas.pdf");
   };
 
@@ -443,102 +445,148 @@ export default function Vendas() {
                 <DialogDescription>Preencha os dados da nova venda no sistema.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="cpfCliente">CPF Cliente</Label>
-                  <Input id="cpfCliente" type="text" placeholder="000.000.000-00" onChange={handleChangeForm} />
+
+                {/* ── Seção: Dados do Cliente ── */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dados do Cliente</p>
+
+                  <div>
+                    <Label htmlFor="nomeCliente">Nome Cliente</Label>
+                    <Input id="nomeCliente" type="text" placeholder="Nome do Cliente" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input id="cpfCliente" type="text" placeholder="000.000.000-00" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="dataNascimento">Data de Nascimento</Label>
+                    <Input id="dataNascimento" type="date" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="telefone">Telefone</Label>
+                    <Input id="telefone" type="text" placeholder="(00) 00000-0000" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="endereco">Endereço</Label>
+                    <Input id="endereco" type="text" placeholder="Rua, número, bairro, cidade - UF" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="convenio">Convênio</Label>
+                    <Input id="convenio" type="text" placeholder="Ex: INSS, Prefeitura, Exército..." onChange={handleChangeForm} />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="nomeCliente">Nome Cliente</Label>
-                  <Input id="nomeCliente" type="text" placeholder="Nome do Cliente" onChange={handleChangeForm} />
+
+                {/* ── Seção: Dados da Venda ── */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dados da Venda</p>
+
+                  <div>
+                    <Label htmlFor="valorLiberado">Valor da Venda (R$)</Label>
+                    <Input id="valorLiberado" type="number" placeholder="45000.00" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="prazo">Prazo</Label>
+                    <Input id="prazo" type="text" placeholder="120x" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="promotora">Promotora</Label>
+                    <Input id="promotora" type="text" placeholder="BEVI" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="comissaoEmpresa">Comissão Empresa (R$)</Label>
+                    <Input id="comissaoEmpresa" type="number" placeholder="300.57" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="comissaoColaborador">Comissão Colaborador (R$)</Label>
+                    <Input id="comissaoColaborador" type="number" placeholder="100.69" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="taxa">Taxa (%)</Label>
+                    <Input id="taxa" type="number" placeholder="7.89" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cidadeVenda">Cidade</Label>
+                    <Input id="cidadeVenda" type="text" placeholder="Salvador" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="ID_SUPERVISOR">Supervisor</Label>
+                    <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, ID_SUPERVISOR: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o supervisor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supervisors.map((s) => (
+                          <SelectItem key={s.ID_SUPERVISOR} value={String(s.ID_SUPERVISOR)}>{s.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="ID_COLABORADOR">Colaborador</Label>
+                    <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, ID_COLABORADOR: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o colaborador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {colaborators.map((c) => (
+                          <SelectItem key={c.ID_COLABORADOR} value={String(c.ID_COLABORADOR)}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="banco">Banco</Label>
+                    <Input id="banco" type="text" placeholder="Santander" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="linha_venda">Linha</Label>
+                    <Input id="linha_venda" type="text" placeholder="Inss" onChange={handleChangeForm} />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="produtoVenda">Produto Venda</Label>
+                    <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, produtoVenda: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o produto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Novo Consignado">Novo Consignado</SelectItem>
+                        <SelectItem value="Renovacao">Renovacao</SelectItem>
+                        <SelectItem value="RMC">Cartao RMC</SelectItem>
+                        <SelectItem value="RCC">Cartao RCC</SelectItem>
+                        <SelectItem value="Portabilidade Consignado">Portabilidade Consignado</SelectItem>
+                        <SelectItem value="Credito Pessoal">Credito Pessoal</SelectItem>
+                        <SelectItem value="Port+Refin Consignado">Port+Refin Consignado</SelectItem>
+                        <SelectItem value="Decimo Terceiro">Decimo Terceiro</SelectItem>
+                        <SelectItem value="CLT">CLT</SelectItem>
+                        <SelectItem value="FGTS">FGTS</SelectItem>
+                        <SelectItem value="Consorcio">Consorcio</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="dataPagamento">Data do Pagamento</Label>
+                    <Input id="dataPagamento" type="date" onChange={handleChangeForm} />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="valorLiberado">Valor da Venda (R$)</Label>
-                  <Input id="valorLiberado" type="number" placeholder="45000.00" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="prazo">Prazo</Label>
-                  <Input id="prazo" type="text" placeholder="120x" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="promotora">Promotora</Label>
-                  <Input id="promotora" type="text" placeholder="BEVI" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="comissaoEmpresa">Comissão Empresa (R$)</Label>
-                  <Input id="comissaoEmpresa" type="number" placeholder="300.57" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="comissaoColaborador">Comissão Colaborador (R$)</Label>
-                  <Input id="comissaoColaborador" type="number" placeholder="100.69" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="taxa">Taxa (%)</Label>
-                  <Input id="taxa" type="number" placeholder="7.89" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="cidadeVenda">Cidade</Label>
-                  <Input id="cidadeVenda" type="text" placeholder="Salvador" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="ID_SUPERVISOR">Supervisor</Label>
-                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, ID_SUPERVISOR: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o supervisor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supervisors.map((s) => (
-                        <SelectItem key={s.ID_SUPERVISOR} value={String(s.ID_SUPERVISOR)}>{s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="ID_COLABORADOR">Colaborador</Label>
-                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, ID_COLABORADOR: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o colaborador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {colaborators.map((c) => (
-                        <SelectItem key={c.ID_COLABORADOR} value={String(c.ID_COLABORADOR)}>{c.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="banco">Banco</Label>
-                  <Input id="banco" type="text" placeholder="Santander" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="linha_venda">Linha</Label>
-                  <Input id="linha_venda" type="text" placeholder="Inss" onChange={handleChangeForm} />
-                </div>
-                <div>
-                  <Label htmlFor="produtoVenda">Produto Venda</Label>
-                  <Select onValueChange={(v) => setVendaForm((p) => ({ ...p, produtoVenda: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o produto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Novo Consignado">Novo Consignado</SelectItem>
-                      <SelectItem value="Renovacao">Renovacao</SelectItem>
-                      <SelectItem value="RMC">Cartao RMC</SelectItem>
-                      <SelectItem value="RCC">Cartao RCC</SelectItem>
-                      <SelectItem value="Portabilidade Consignado">Portabilidade Consignado</SelectItem>
-                      <SelectItem value="Credito Pessoal">Credito Pessoal</SelectItem>
-                      <SelectItem value="Port+Refin Consignado">Port+Refin Consignado</SelectItem>
-                      <SelectItem value="Decimo Terceiro">Decimo Terceiro</SelectItem>
-                      <SelectItem value="CLT">CLT</SelectItem>
-                      <SelectItem value="FGTS">FGTS</SelectItem>
-                      <SelectItem value="Consorcio">Consorcio</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="dataPagamento">Data do Pagamento</Label>
-                  <Input id="dataPagamento" type="date" onChange={handleChangeForm} />
-                </div>
-                <div className="flex gap-2 pt-4">
+
+                <div className="flex gap-2 pt-2">
                   <Button onClick={cadastrarVenda} className="flex-1">Registrar Venda</Button>
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
                 </div>
@@ -561,7 +609,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Total vendido</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
@@ -572,7 +619,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Vendas realizadas</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
@@ -583,7 +629,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Por venda</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Minha Comissão</CardTitle>
@@ -606,7 +651,6 @@ export default function Vendas() {
                 <div className="text-2xl font-bold">{formatCurrency(displayTotals.valorTotalMesAtual)}</div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Qtd. Vendas</CardTitle>
@@ -617,7 +661,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Vendas realizadas</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Maior Venda</CardTitle>
@@ -628,7 +671,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Maior venda registrada</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Menor Venda</CardTitle>
@@ -639,7 +681,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Menor venda registrada</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Comissao Empresa</CardTitle>
@@ -650,7 +691,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Total em comissões</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Comissao Colaboador MEI</CardTitle>
@@ -661,7 +701,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Total em comissões</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Comissao Colaboador CLT</CardTitle>
@@ -672,7 +711,6 @@ export default function Vendas() {
                 <p className="text-xs text-muted-foreground">Total em comissões</p>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
@@ -694,7 +732,7 @@ export default function Vendas() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div>
-              <Label htmlFor="search">Buscar por Cliente, CPF ou Colaborador</Label>
+              <Label htmlFor="search">Buscar por Cliente ou Colaborador</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input id="search" placeholder="Digite para buscar..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -708,7 +746,6 @@ export default function Vendas() {
               <Label htmlFor="dataFinal">Data final</Label>
               <Input type="date" id="dataFinal" value={dataFinalFilter} onChange={(e) => setDataFinalFilter(e.target.value)} />
             </div>
-
             <div>
               <Label>Filtrar por Banco</Label>
               <Select onValueChange={setBancoFilter} value={bancoFilter}>
@@ -723,7 +760,6 @@ export default function Vendas() {
                 </SelectContent>
               </Select>
             </div>
-
             {["ADMIN", "SUPERVISOR"].includes(currentUser.role) && (
               <div>
                 <Label>Filtrar por Colaborador</Label>
@@ -740,7 +776,6 @@ export default function Vendas() {
                 </Select>
               </div>
             )}
-
             <div>
               <Label>Ordenar por Valor</Label>
               <Select onValueChange={setOrdenacaoValor} value={ordenacaoValor}>
@@ -842,9 +877,9 @@ export default function Vendas() {
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Link>
-                        <Button variant="ghost" size="sm" onClick={() => deleteSale(venda)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteSale(venda)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
